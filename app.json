@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Warteg POS",
+    "slug": "warteg-pos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#f7f3eb"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f7f3eb"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
