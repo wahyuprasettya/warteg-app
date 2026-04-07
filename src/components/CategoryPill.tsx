@@ -7,16 +7,26 @@ interface Props {
   onPress: () => void;
 }
 
-export const CategoryPill = ({ label, icon, active = false, onPress }: Props) => (
+export const CategoryPill = ({
+  label,
+  icon,
+  active = false,
+  onPress,
+}: Props) => (
   <Pressable
     className="mr-2 flex-row items-center rounded-2xl border px-5"
     style={[styles.pill, active ? styles.pillActive : styles.pillInactive]}
     onPress={onPress}
   >
     {icon ? (
-      <Text style={styles.icon}>{icon}</Text>
+      <Text style={styles.icon} className="font-poppins">
+        {icon}
+      </Text>
     ) : null}
-    <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive]}>
+    <Text
+      style={[styles.label, active ? styles.labelActive : styles.labelInactive]}
+      className="font-poppins"
+    >
       {label}
     </Text>
   </Pressable>

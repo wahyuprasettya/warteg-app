@@ -10,9 +10,7 @@ interface Props {
 export const StatCard = ({ label, value, icon, accent = false }: Props) => (
   <View
     className={`mr-3 flex-1 rounded-[28px] p-5 border ${
-      accent
-        ? "bg-brand border-brand/20"
-        : "bg-white border-brand/5"
+      accent ? "bg-brand border-brand/20" : "bg-white border-brand/5"
     }`}
   >
     {icon ? (
@@ -21,7 +19,7 @@ export const StatCard = ({ label, value, icon, accent = false }: Props) => (
           accent ? "bg-white/20" : "bg-brand-soft/50"
         }`}
       >
-        <Text className="text-lg">{icon}</Text>
+        <Text className="font-poppins text-lg">{icon}</Text>
       </View>
     ) : null}
     <Text

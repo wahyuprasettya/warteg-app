@@ -52,13 +52,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           price: product.price,
           category: product.category,
           qty: 1,
+          stock: product.stock,
         },
       ];
     });
   };
 
   const removeFromCart = (itemId: string) => {
-    setItems((currentItems) => currentItems.filter((item) => item.id !== itemId));
+    setItems((currentItems) =>
+      currentItems.filter((item) => item.id !== itemId),
+    );
   };
 
   const updateQty = (itemId: string, qty: number) => {

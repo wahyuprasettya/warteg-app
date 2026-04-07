@@ -16,6 +16,7 @@ import { SetupBusinessScreen } from "@/screens/SetupBusinessScreen";
 import { TableScreen } from "@/screens/TableScreen";
 import { TransactionHistoryScreen } from "@/screens/TransactionHistoryScreen";
 import { WartegScreen } from "@/screens/WartegScreen";
+import { SettingsScreen } from "@/screens/SettingsScreen";
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -26,7 +27,9 @@ export const AppNavigator = () => {
     return (
       <View className="flex-1 items-center justify-center bg-brand-soft">
         <ActivityIndicator size="large" color="#A63D40" />
-        <Text className="mt-4 text-base text-brand-ink font-poppins-medium">Menyiapkan aplikasi kasir...</Text>
+        <Text className="mt-4 text-base text-brand-ink font-poppins-medium">
+          Menyiapkan aplikasi kasir...
+        </Text>
       </View>
     );
   }
@@ -62,8 +65,12 @@ export const AppNavigator = () => {
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="Products" component={ProductScreen} />
           <Stack.Screen name="AddProduct" component={AddProductScreen} />
-          <Stack.Screen name="Transactions" component={TransactionHistoryScreen} />
+          <Stack.Screen
+            name="Transactions"
+            component={TransactionHistoryScreen}
+          />
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
       )}
     </NavigationContainer>

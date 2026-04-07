@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
+import { AppButton } from "@/components/AppButton";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +14,7 @@ import {
   subscribeTodayClosing,
   subscribeTransactionsByRange,
   summarizeTransactions,
+  getTransactionsByRange,
 } from "@/services/firestoreService";
 import {
   AppStackParamList,
@@ -23,6 +25,7 @@ import {
   TransactionRecord,
 } from "@/types";
 import { formatIDR } from "@/utils/currency";
+import { exportTransactionsToExcel, exportTransactionsToPDF } from "@/utils/exportTools";
 import { formatLongDate, formatTime } from "@/utils/date";
 import { generateInsights } from "@/utils/insights";
 
@@ -109,19 +112,26 @@ const emptySummary: SalesReportSummary = {
 export const DashboardScreen = ({ navigation }: Props) => {
   const { authUser, profile, signOutUser } = useAuth();
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
-  const [todayTransactions, setTodayTransactions] = useState<TransactionRecord[]>([]);
+  const [todayTransactions, setTodayTransactions] = useState<
+    TransactionRecord[]
+  >([]);
   const [todayClosing, setTodayClosing] = useState<ClosingRecord | null>(null);
   const [range, setRange] = useState<keyof typeof dateRanges>("today");
   const [reportRange, setReportRange] = useState<keyof ClosingReports>("day");
   const [isClosing, setIsClosing] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (!authUser) {
       return;
     }
 
-    const unsubscribe = subscribeTransactionsByRange(authUser.uid, range, setTransactions);
+    const unsubscribe = subscribeTransactionsByRange(
+      authUser.uid,
+      range,
+      setTransactions,
+    );
     return unsubscribe;
   }, [authUser, range]);
 
@@ -130,7 +140,11 @@ export const DashboardScreen = ({ navigation }: Props) => {
       return;
     }
 
-    const unsubscribe = subscribeTransactionsByRange(authUser.uid, "today", setTodayTransactions);
+    const unsubscribe = subscribeTransactionsByRange(
+      authUser.uid,
+      "today",
+      setTodayTransactions,
+    );
     return unsubscribe;
   }, [authUser]);
 
@@ -143,9 +157,42 @@ export const DashboardScreen = ({ navigation }: Props) => {
     return unsubscribe;
   }, [authUser]);
 
-  const summary = useMemo(() => summarizeTransactions(transactions), [transactions]);
-  const todaySummary = useMemo(() => summarizeTransactions(todayTransactions), [todayTransactions]);
-  const insights = useMemo(() => generateInsights(transactions, summary), [summary, transactions]);
+  const summary = useMemo(
+    () => summarizeTransactions(transactions),
+    [transactions],
+  );
+  const todaySummary = useMemo(
+    () => summarizeTransactions(todayTransactions),
+    [todayTransactions],
+  );
+  const insights = useMemo(
+    () => generateInsights(transactions, summary),
+    [summary, transactions],
+  );
+
+  const handleExportPDF = async () => {
+    if (!authUser || !todayClosing) return;
+    try {
+      setIsExporting(true);
+      const data = await getTransactionsByRange(authUser.uid, reportRange === "day" ? "today" : reportRange);
+      await exportTransactionsToPDF(data, reportLabels[reportRange]);
+    } catch (error) {
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!authUser || !todayClosing) return;
+    try {
+      setIsExporting(true);
+      const data = await getTransactionsByRange(authUser.uid, reportRange === "day" ? "today" : reportRange);
+      await exportTransactionsToExcel(data, reportLabels[reportRange]);
+    } catch (error) {
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -158,9 +205,13 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const businessType = profile?.businessType ?? "warung";
   const businessLabel = businessLabels[businessType];
   const mainEntry = salesEntryByBusinessType[businessType];
-  const cashierName = useMemo(() => getCashierName(profile?.email ?? authUser?.email), [authUser?.email, profile?.email]);
+  const cashierName = useMemo(
+    () => getCashierName(profile?.email ?? authUser?.email),
+    [authUser?.email, profile?.email],
+  );
   const todayLabel = useMemo(() => formatLongDate(), []);
-  const canCloseNow = new Date().getHours() >= CLOSING_HOUR;
+  const closingHour = profile?.closingHour ?? CLOSING_HOUR;
+  const canCloseNow = new Date().getHours() >= closingHour;
 
   const actionCards = useMemo(
     () => [
@@ -186,6 +237,13 @@ export const DashboardScreen = ({ navigation }: Props) => {
         onPress: () => navigation.navigate("Transactions"),
       },
       {
+        label: "Pengaturan Toko",
+        icon: "⚙️",
+        hint: "Atur jam operasional dan diskon promo.",
+        accent: false,
+        onPress: () => navigation.navigate("Settings"),
+      },
+      {
         label: "Logout",
         icon: "🚪",
         hint: "Keluar dari akun sekarang.",
@@ -199,7 +257,9 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const visibleInsights =
     insights.length > 0
       ? insights.slice(0, 3)
-      : ["Belum ada cukup data transaksi. Jalankan beberapa penjualan untuk melihat insight otomatis."];
+      : [
+          "Belum ada cukup data transaksi. Jalankan beberapa penjualan untuk melihat insight otomatis.",
+        ];
 
   const reportSummary = todayClosing?.reports?.[reportRange] ?? emptySummary;
 
@@ -209,12 +269,18 @@ export const DashboardScreen = ({ navigation }: Props) => {
     }
 
     if (todayClosing) {
-      Alert.alert("Closing sudah dilakukan", "Hari ini sudah ditutup. Kamu bisa langsung generate laporan.");
+      Alert.alert(
+        "Closing sudah dilakukan",
+        "Hari ini sudah ditutup. Kamu bisa langsung generate laporan.",
+      );
       return;
     }
 
     if (!canCloseNow) {
-      Alert.alert("Belum waktunya closing", `Closing harian baru bisa dilakukan mulai pukul ${CLOSING_HOUR}.00.`);
+      Alert.alert(
+        "Belum waktunya closing",
+        `Closing harian baru bisa dilakukan mulai pukul ${closingHour}.00.`,
+      );
       return;
     }
 
@@ -235,7 +301,10 @@ export const DashboardScreen = ({ navigation }: Props) => {
                 cashierEmail: profile.email,
                 summary: todaySummary,
               });
-              Alert.alert("Closing berhasil", "Penjualan hari ini sudah ditutup dan siap dibuatkan laporan.");
+              Alert.alert(
+                "Closing berhasil",
+                "Penjualan hari ini sudah ditutup dan siap dibuatkan laporan.",
+              );
             } catch (error) {
               Alert.alert("Closing gagal", "Coba ulangi beberapa saat lagi.");
             } finally {
@@ -253,16 +322,26 @@ export const DashboardScreen = ({ navigation }: Props) => {
     }
 
     if (!todayClosing) {
-      Alert.alert("Closing belum dilakukan", "Laporan harian, bulanan, dan tahunan baru tersedia setelah closing hari ini.");
+      Alert.alert(
+        "Closing belum dilakukan",
+        "Laporan harian, bulanan, dan tahunan baru tersedia setelah closing hari ini.",
+      );
       return;
     }
 
     try {
       setIsGeneratingReport(true);
       await generateAndSaveClosingReports(authUser.uid);
-      Alert.alert("Laporan siap", "Laporan harian, bulanan, dan tahunan berhasil dibuat.");
-    } catch (error) {
-      Alert.alert("Gagal generate laporan", "Coba ulangi beberapa saat lagi.");
+      Alert.alert(
+        "Laporan siap",
+        "Laporan harian, bulanan, dan tahunan berhasil dibuat.",
+      );
+    } catch (error: any) {
+      Alert.alert(
+        "Gagal generate laporan",
+        error?.message || "Coba ulangi beberapa saat lagi.",
+      );
+      console.error("[Generate Report Error]: ", error);
     } finally {
       setIsGeneratingReport(false);
     }
@@ -276,27 +355,37 @@ export const DashboardScreen = ({ navigation }: Props) => {
 
         <View className="flex-row items-start justify-between">
           <View className="flex-1 pr-4">
-            <Text className="text-sm font-poppins-semibold text-white/75">{greeting}</Text>
-            <Text className="mt-1 text-4xl font-poppins-bold text-white">Dashboard</Text>
-            <Text className="mt-2 text-sm leading-5 text-white/80">
+            <Text className="text-sm font-poppins-semibold text-white/75">
+              {greeting}
+            </Text>
+            <Text className="mt-1 text-4xl font-poppins-bold text-white">
+              Dashboard
+            </Text>
+            <Text className="font-poppins mt-2 text-sm leading-5 text-white/80">
               {businessLabel} • kasir {cashierName} • {todayLabel}
             </Text>
           </View>
           <View className="h-14 w-14 items-center justify-center rounded-[20px] bg-white/15">
-            <Text className="text-2xl">📈</Text>
+            <Text className="font-poppins text-2xl">📈</Text>
           </View>
         </View>
 
         <View className="mt-4 flex-row flex-wrap">
           <View className="mr-2 mb-2 rounded-full bg-white/12 px-3 py-2">
-            <Text className="text-xs font-poppins-semibold text-white">Kasir: {cashierName}</Text>
+            <Text className="text-xs font-poppins-semibold text-white">
+              Kasir: {cashierName}
+            </Text>
           </View>
           <View className="mr-2 mb-2 rounded-full bg-white/12 px-3 py-2">
-            <Text className="text-xs font-poppins-semibold text-white">{todayLabel}</Text>
+            <Text className="text-xs font-poppins-semibold text-white">
+              {todayLabel}
+            </Text>
           </View>
           <View className="mb-2 rounded-full bg-white/12 px-3 py-2">
             <Text className="text-xs font-poppins-semibold text-white">
-              {todayClosing ? `Closing ${formatTime(todayClosing.closedAt)}` : `Closing mulai ${CLOSING_HOUR}.00`}
+              {todayClosing
+                ? `Closing ${formatTime(todayClosing.closedAt)}`
+                : `Closing mulai ${closingHour}.00`}
             </Text>
           </View>
         </View>
@@ -307,23 +396,38 @@ export const DashboardScreen = ({ navigation }: Props) => {
               <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-white/60">
                 Total Penjualan {rangeLabels[range]}
               </Text>
-              <Text className="mt-2 text-4xl font-poppins-bold text-white" numberOfLines={1} adjustsFontSizeToFit>
+              <Text
+                className="mt-2 text-4xl font-poppins-bold text-white"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 {formatIDR(summary.totalSales)}
               </Text>
             </View>
             <View className="rounded-full bg-white/15 px-3 py-2">
-              <Text className="text-xs font-poppins-bold text-white/90">{summary.transactionCount} transaksi</Text>
+              <Text className="text-xs font-poppins-bold text-white/90">
+                {summary.transactionCount} transaksi
+              </Text>
             </View>
           </View>
 
           <View className="mt-4 flex-row">
             <View className="mr-2 flex-1 rounded-[22px] bg-white/10 p-3">
-              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-white/60">Rata-rata</Text>
-              <Text className="mt-1 text-lg font-poppins-bold text-white">{formatIDR(summary.avgTransaction)}</Text>
+              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-white/60">
+                Rata-rata
+              </Text>
+              <Text className="mt-1 text-lg font-poppins-bold text-white">
+                {formatIDR(summary.avgTransaction)}
+              </Text>
             </View>
             <View className="flex-1 rounded-[22px] bg-white/10 p-3">
-              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-white/60">Terlaris</Text>
-              <Text className="mt-1 text-lg font-poppins-bold text-white" numberOfLines={1}>
+              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-white/60">
+                Terlaris
+              </Text>
+              <Text
+                className="mt-1 text-lg font-poppins-bold text-white"
+                numberOfLines={1}
+              >
                 {summary.bestSeller}
               </Text>
             </View>
@@ -333,45 +437,70 @@ export const DashboardScreen = ({ navigation }: Props) => {
 
       <View className="mb-4 rounded-[24px] border border-brand/5 bg-white p-1.5">
         <View className="flex-row">
-          {(Object.keys(dateRanges) as Array<keyof typeof dateRanges>).map((item) => (
-            <Pressable
-              key={item}
-              className={`flex-1 flex-row items-center justify-center rounded-[18px] py-3 ${
-                range === item ? "bg-brand" : ""
-              }`}
-              onPress={() => setRange(item)}
-            >
-              <Text className="mr-1.5 text-sm">{rangeIcons[item]}</Text>
-              <Text className={`text-sm font-poppins-bold ${range === item ? "text-white" : "text-brand-muted"}`}>
-                {rangeLabels[item]}
-              </Text>
-            </Pressable>
-          ))}
+          {(Object.keys(dateRanges) as Array<keyof typeof dateRanges>).map(
+            (item) => (
+              <Pressable
+                key={item}
+                className={`flex-1 flex-row items-center justify-center rounded-[18px] py-3 ${
+                  range === item ? "bg-brand" : ""
+                }`}
+                onPress={() => setRange(item)}
+              >
+                <Text className="font-poppins mr-1.5 text-sm">
+                  {rangeIcons[item]}
+                </Text>
+                <Text
+                  className={`text-sm font-poppins-bold ${range === item ? "text-white" : "text-brand-muted"}`}
+                >
+                  {rangeLabels[item]}
+                </Text>
+              </Pressable>
+            ),
+          )}
         </View>
       </View>
 
       <View className="mb-4 flex-row">
-        <StatCard label="Transaksi" value={String(summary.transactionCount)} icon="🧾" accent />
-        <StatCard label="Item Terjual" value={String(summary.itemSold)} icon="🛍️" />
+        <StatCard
+          label="Transaksi"
+          value={String(summary.transactionCount)}
+          icon="🧾"
+          accent
+        />
+        <StatCard
+          label="Item Terjual"
+          value={String(summary.itemSold)}
+          icon="🛍️"
+        />
       </View>
 
       <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
         <View className="flex-row items-center justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Closing Hari Ini</Text>
-            <Text className="mt-2 text-2xl font-poppins-bold text-brand-ink">
-              {todayClosing ? "Sudah Closing" : canCloseNow ? "Siap Closing" : "Menunggu Closing"}
+            <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+              Closing Hari Ini
             </Text>
-            <Text className="mt-2 text-sm leading-5 text-brand-muted">
+            <Text className="mt-2 text-2xl font-poppins-bold text-brand-ink">
+              {todayClosing
+                ? "Sudah Closing"
+                : canCloseNow
+                  ? "Siap Closing"
+                  : "Menunggu Closing"}
+            </Text>
+            <Text className="font-poppins mt-2 text-sm leading-5 text-brand-muted">
               {todayClosing
                 ? `Kasir ${todayClosing.cashierName} menutup buku pada ${formatTime(todayClosing.closedAt)}.`
                 : canCloseNow
                   ? "Waktu closing sudah tiba. Tutup penjualan hari ini agar laporan bisa dibuat."
-                  : `Closing akan aktif mulai pukul ${CLOSING_HOUR}.00.`}
+                  : `Closing akan aktif mulai pukul ${closingHour}.00.`}
             </Text>
           </View>
-          <View className={`rounded-full px-3 py-2 ${todayClosing ? "bg-emerald-50" : "bg-brand-soft"}`}>
-            <Text className={`text-xs font-poppins-bold ${todayClosing ? "text-emerald-700" : "text-brand"}`}>
+          <View
+            className={`rounded-full px-3 py-2 ${todayClosing ? "bg-emerald-50" : "bg-brand-soft"}`}
+          >
+            <Text
+              className={`text-xs font-poppins-bold ${todayClosing ? "text-emerald-700" : "text-brand"}`}
+            >
               {todayClosing ? "Closed" : "Open"}
             </Text>
           </View>
@@ -379,12 +508,21 @@ export const DashboardScreen = ({ navigation }: Props) => {
 
         <View className="mt-4 flex-row">
           <View className="mr-2 flex-1 rounded-[22px] bg-brand-soft/50 p-3">
-            <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Omzet Hari Ini</Text>
-            <Text className="mt-1 text-lg font-poppins-bold text-brand-ink">{formatIDR(todaySummary.totalSales)}</Text>
+            <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+              Omzet Hari Ini
+            </Text>
+            <Text className="mt-1 text-lg font-poppins-bold text-brand-ink">
+              {formatIDR(todaySummary.totalSales)}
+            </Text>
           </View>
           <View className="flex-1 rounded-[22px] bg-brand-soft/50 p-3">
-            <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Kasir</Text>
-            <Text className="mt-1 text-lg font-poppins-bold text-brand-ink" numberOfLines={1}>
+            <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+              Kasir
+            </Text>
+            <Text
+              className="mt-1 text-lg font-poppins-bold text-brand-ink"
+              numberOfLines={1}
+            >
               {cashierName}
             </Text>
           </View>
@@ -392,35 +530,50 @@ export const DashboardScreen = ({ navigation }: Props) => {
 
         <Pressable
           className={`mt-4 items-center rounded-[24px] px-4 py-4 ${
-            todayClosing || !canCloseNow || isClosing ? "bg-brand-soft/70" : "bg-brand"
+            todayClosing || !canCloseNow || isClosing
+              ? "bg-brand-soft/70"
+              : "bg-brand"
           }`}
           disabled={todayClosing !== null || !canCloseNow || isClosing}
           onPress={handleCloseDay}
         >
-          <Text className={`text-base font-poppins-bold ${todayClosing || !canCloseNow ? "text-brand" : "text-white"}`}>
-            {todayClosing ? "Closing Sudah Selesai" : isClosing ? "Memproses Closing..." : "Closing Hari Ini"}
+          <Text
+            className={`text-base font-poppins-bold ${todayClosing || !canCloseNow ? "text-brand" : "text-white"}`}
+          >
+            {todayClosing
+              ? "Closing Sudah Selesai"
+              : isClosing
+                ? "Memproses Closing..."
+                : "Closing Hari Ini"}
           </Text>
         </Pressable>
       </View>
 
       <View className="mb-4 flex-row">
         <View className="mr-2 flex-1 rounded-[28px] border border-brand/5 bg-white p-5">
-          <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Produk Favorit</Text>
-          <Text className="mt-2 text-2xl font-poppins-bold text-brand-ink" numberOfLines={1}>
+          <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+            Produk Favorit
+          </Text>
+          <Text
+            className="mt-2 text-2xl font-poppins-bold text-brand-ink"
+            numberOfLines={1}
+          >
             {summary.bestSeller}
           </Text>
-          <Text className="mt-2 text-sm leading-5 text-brand-muted">
+          <Text className="font-poppins mt-2 text-sm leading-5 text-brand-muted">
             {summary.transactionCount === 0
               ? "Belum ada transaksi yang bisa dibaca. Produk favorit akan muncul setelah penjualan masuk."
               : `Produk ini paling sering muncul pada transaksi ${rangeLabels[range].toLowerCase()}.`}
           </Text>
         </View>
         <View className="flex-1 rounded-[28px] border border-brand/5 bg-white p-5">
-          <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Generate Laporan</Text>
+          <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+            Generate Laporan
+          </Text>
           <Text className="mt-2 text-2xl font-poppins-bold text-brand-ink">
             {todayClosing?.reports ? "Siap" : "Menunggu"}
           </Text>
-          <Text className="mt-2 text-sm leading-5 text-brand-muted">
+          <Text className="font-poppins mt-2 text-sm leading-5 text-brand-muted">
             {todayClosing
               ? todayClosing.reportGeneratedAt
                 ? `Laporan terakhir dibuat ${formatTime(todayClosing.reportGeneratedAt)}.`
@@ -432,8 +585,14 @@ export const DashboardScreen = ({ navigation }: Props) => {
             disabled={!todayClosing || isGeneratingReport}
             onPress={handleGenerateReports}
           >
-            <Text className={`text-sm font-poppins-bold ${todayClosing ? "text-white" : "text-brand"}`}>
-              {isGeneratingReport ? "Membuat Laporan..." : todayClosing?.reports ? "Refresh Laporan" : "Generate Laporan"}
+            <Text
+              className={`text-sm font-poppins-bold ${todayClosing ? "text-white" : "text-brand"}`}
+            >
+              {isGeneratingReport
+                ? "Membuat Laporan..."
+                : todayClosing?.reports
+                  ? "Refresh Laporan"
+                  : "Generate Laporan"}
             </Text>
           </Pressable>
         </View>
@@ -443,71 +602,117 @@ export const DashboardScreen = ({ navigation }: Props) => {
         <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
           <View className="mb-3 flex-row items-center justify-between">
             <View className="flex-1 pr-3">
-              <Text className="text-lg font-poppins-bold text-brand-ink">Laporan Penjualan</Text>
-              <Text className="text-xs text-brand-muted">
-                Setelah closing, laporan tersedia dalam ringkasan harian, bulanan, dan tahunan.
+              <Text className="text-lg font-poppins-bold text-brand-ink">
+                Laporan Penjualan
+              </Text>
+              <Text className="font-poppins text-xs text-brand-muted">
+                Setelah closing, laporan tersedia dalam ringkasan harian,
+                bulanan, dan tahunan.
               </Text>
             </View>
             <View className="rounded-full bg-brand-soft px-3 py-1.5">
               <Text className="text-xs font-poppins-semibold text-brand">
-                {todayClosing.reportGeneratedAt ? `Update ${formatTime(todayClosing.reportGeneratedAt)}` : "Siap"}
+                {todayClosing.reportGeneratedAt
+                  ? `Update ${formatTime(todayClosing.reportGeneratedAt)}`
+                  : "Siap"}
               </Text>
             </View>
           </View>
 
           <View className="mb-4 rounded-[22px] bg-brand-soft/30 p-1.5">
             <View className="flex-row">
-              {(Object.keys(reportLabels) as Array<keyof ClosingReports>).map((item) => (
-                <Pressable
-                  key={item}
-                  className={`flex-1 rounded-[18px] py-3 ${reportRange === item ? "bg-brand" : ""}`}
-                  onPress={() => setReportRange(item)}
-                >
-                  <Text className={`text-center text-sm font-poppins-bold ${reportRange === item ? "text-white" : "text-brand-muted"}`}>
-                    {reportLabels[item]}
-                  </Text>
-                </Pressable>
-              ))}
+              {(Object.keys(reportLabels) as Array<keyof ClosingReports>).map(
+                (item) => (
+                  <Pressable
+                    key={item}
+                    className={`flex-1 rounded-[18px] py-3 ${reportRange === item ? "bg-brand" : ""}`}
+                    onPress={() => setReportRange(item)}
+                  >
+                    <Text
+                      className={`text-center text-sm font-poppins-bold ${reportRange === item ? "text-white" : "text-brand-muted"}`}
+                    >
+                      {reportLabels[item]}
+                    </Text>
+                  </Pressable>
+                ),
+              )}
             </View>
           </View>
 
           <View className="mb-4 flex-row">
             <View className="mr-2 flex-1 rounded-[22px] bg-brand-soft/40 p-4">
-              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Omzet</Text>
-              <Text className="mt-2 text-xl font-poppins-bold text-brand-ink">{formatIDR(reportSummary.totalSales)}</Text>
+              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+                Omzet
+              </Text>
+              <Text className="mt-2 text-xl font-poppins-bold text-brand-ink">
+                {formatIDR(reportSummary.totalSales)}
+              </Text>
             </View>
             <View className="mr-2 flex-1 rounded-[22px] bg-brand-soft/40 p-4">
-              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Transaksi</Text>
-              <Text className="mt-2 text-xl font-poppins-bold text-brand-ink">{reportSummary.transactionCount}</Text>
+              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+                Transaksi
+              </Text>
+              <Text className="mt-2 text-xl font-poppins-bold text-brand-ink">
+                {reportSummary.transactionCount}
+              </Text>
             </View>
             <View className="flex-1 rounded-[22px] bg-brand-soft/40 p-4">
-              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Item</Text>
-              <Text className="mt-2 text-xl font-poppins-bold text-brand-ink">{reportSummary.itemSold}</Text>
+              <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+                Item
+              </Text>
+              <Text className="mt-2 text-xl font-poppins-bold text-brand-ink">
+                {reportSummary.itemSold}
+              </Text>
             </View>
           </View>
 
+          <View className="mb-4 flex-row justify-between">
+            <AppButton
+              label={isExporting ? "Memproses..." : "📄 Export PDF"}
+              onPress={handleExportPDF}
+              variant="secondary"
+              loading={isExporting}
+            />
+            <View className="w-2" />
+            <AppButton
+              label={isExporting ? "Memproses..." : "📊 Export Excel"}
+              onPress={handleExportExcel}
+              variant="secondary"
+              loading={isExporting}
+            />
+          </View>
+
           <View className="rounded-[24px] bg-brand-soft/20 p-4">
-            <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">Ringkasan</Text>
+            <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+              Ringkasan
+            </Text>
             <Text className="mt-2 text-base font-poppins-bold text-brand-ink">
               Produk terlaris: {reportSummary.bestSeller}
             </Text>
-            <Text className="mt-1 text-sm leading-5 text-brand-muted">
-              Rata-rata transaksi {formatIDR(reportSummary.avgTransaction)} pada laporan {reportLabels[reportRange].toLowerCase()}.
+            <Text className="font-poppins mt-1 text-sm leading-5 text-brand-muted">
+              Rata-rata transaksi {formatIDR(reportSummary.avgTransaction)} pada
+              laporan {reportLabels[reportRange].toLowerCase()}.
             </Text>
           </View>
         </View>
       ) : null}
 
       <View className="mb-5">
-        <Text className="text-lg font-poppins-bold text-brand-ink">Aksi Cepat</Text>
-        <Text className="mt-1 text-sm text-brand-muted">Pindah ke layar penting tanpa muter-muter menu.</Text>
+        <Text className="text-lg font-poppins-bold text-brand-ink">
+          Aksi Cepat
+        </Text>
+        <Text className="font-poppins mt-1 text-sm text-brand-muted">
+          Pindah ke layar penting tanpa muter-muter menu.
+        </Text>
 
         <View className="mt-3 flex-row flex-wrap justify-between">
           {actionCards.map((action) => (
             <Pressable
               key={action.label}
               className={`mb-3 rounded-[26px] border p-4 ${
-                action.accent ? "border-brand/20 bg-brand-soft/70" : "border-brand/5 bg-white"
+                action.accent
+                  ? "border-brand/20 bg-brand-soft/70"
+                  : "border-brand/5 bg-white"
               }`}
               style={{ width: "48.5%" }}
               onPress={action.onPress}
@@ -517,10 +722,14 @@ export const DashboardScreen = ({ navigation }: Props) => {
                   action.accent ? "bg-brand" : "bg-brand-soft/60"
                 }`}
               >
-                <Text className="text-xl">{action.icon}</Text>
+                <Text className="font-poppins text-xl">{action.icon}</Text>
               </View>
-              <Text className="mt-4 text-base font-poppins-bold text-brand-ink">{action.label}</Text>
-              <Text className="mt-1 text-sm leading-5 text-brand-muted">{action.hint}</Text>
+              <Text className="mt-4 text-base font-poppins-bold text-brand-ink">
+                {action.label}
+              </Text>
+              <Text className="font-poppins mt-1 text-sm leading-5 text-brand-muted">
+                {action.hint}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -529,26 +738,39 @@ export const DashboardScreen = ({ navigation }: Props) => {
       <View className="mb-6 rounded-[28px] border border-brand/5 bg-white p-5">
         <View className="mb-3 flex-row items-center">
           <View className="mr-3 h-11 w-11 items-center justify-center rounded-[18px] bg-brand-soft/60">
-            <Text className="text-lg">✨</Text>
+            <Text className="font-poppins text-lg">✨</Text>
           </View>
           <View className="flex-1">
-            <Text className="text-lg font-poppins-bold text-brand-ink">Insight Penjualan</Text>
-            <Text className="text-xs text-brand-muted">Ringkasan cepat untuk membantu keputusan hari ini.</Text>
+            <Text className="text-lg font-poppins-bold text-brand-ink">
+              Insight Penjualan
+            </Text>
+            <Text className="font-poppins text-xs text-brand-muted">
+              Ringkasan cepat untuk membantu keputusan hari ini.
+            </Text>
           </View>
         </View>
 
         {visibleInsights.map((insight, index) => (
-          <View key={`insight-${index}`} className="mt-2.5 flex-row rounded-[22px] bg-brand-soft/30 p-4">
+          <View
+            key={`insight-${index}`}
+            className="mt-2.5 flex-row rounded-[22px] bg-brand-soft/30 p-4"
+          >
             <View className="mr-3 h-7 w-7 items-center justify-center rounded-full bg-brand">
-              <Text className="text-xs font-poppins-bold text-white">{index + 1}</Text>
+              <Text className="text-xs font-poppins-bold text-white">
+                {index + 1}
+              </Text>
             </View>
-            <Text className="flex-1 text-sm leading-6 text-brand-ink">{insight}</Text>
+            <Text className="font-poppins flex-1 text-sm leading-6 text-brand-ink">
+              {insight}
+            </Text>
           </View>
         ))}
       </View>
 
       <View className="items-center pb-4 opacity-40">
-        <Text className="text-xs font-poppins-semibold tracking-wide text-brand-muted">WartegPOS Dashboard</Text>
+        <Text className="text-xs font-poppins-semibold tracking-wide text-brand-muted">
+          WartegPOS Dashboard
+        </Text>
       </View>
     </ScreenContainer>
   );

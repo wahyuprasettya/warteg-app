@@ -24,20 +24,27 @@ export const TableScreen = ({ navigation }: Props) => {
       return;
     }
 
-    const unsubscribe = subscribeTodayTransactions(authUser.uid, (transactions) => {
-      const occupiedTables = new Set(
-        transactions
-          .filter((transaction) => transaction.paymentStatus === "pending" && transaction.tableNumber)
-          .map((transaction) => transaction.tableNumber as string),
-      );
+    const unsubscribe = subscribeTodayTransactions(
+      authUser.uid,
+      (transactions) => {
+        const occupiedTables = new Set(
+          transactions
+            .filter(
+              (transaction) =>
+                transaction.paymentStatus === "pending" &&
+                transaction.tableNumber,
+            )
+            .map((transaction) => transaction.tableNumber as string),
+        );
 
-      setTables(
-        restaurantTables.map((table) => ({
-          ...table,
-          status: occupiedTables.has(table.number) ? "terisi" : "kosong",
-        })),
-      );
-    });
+        setTables(
+          restaurantTables.map((table) => ({
+            ...table,
+            status: occupiedTables.has(table.number) ? "terisi" : "kosong",
+          })),
+        );
+      },
+    );
 
     return unsubscribe;
   }, [authUser]);
@@ -58,9 +65,9 @@ export const TableScreen = ({ navigation }: Props) => {
       />
 
       <View className="mb-4 rounded-[28px] bg-white p-4">
-        <Text className="text-base text-brand-ink">
-          Meja berstatus <Text className="font-poppins-bold">terisi</Text> menandakan ada transaksi dengan pembayaran
-          pending.
+        <Text className="font-poppins text-base text-brand-ink">
+          Meja berstatus <Text className="font-poppins-bold">terisi</Text>{" "}
+          menandakan ada transaksi dengan pembayaran pending.
         </Text>
       </View>
 
@@ -68,7 +75,9 @@ export const TableScreen = ({ navigation }: Props) => {
         data={tables}
         keyExtractor={(item) => item.number}
         numColumns={2}
-        renderItem={({ item }) => <TableCard table={item} onPress={handleSelectTable} />}
+        renderItem={({ item }) => (
+          <TableCard table={item} onPress={handleSelectTable} />
+        )}
         showsVerticalScrollIndicator={false}
       />
     </ScreenContainer>

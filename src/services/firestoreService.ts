@@ -13,6 +13,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  increment,
 } from "firebase/firestore";
 
 import { getDb } from "@/firebase/config";
@@ -26,6 +27,7 @@ import {
   SalesReportSummary,
   TransactionRecord,
   UserProfile,
+  PromoDefinition,
 } from "@/types";
 import { localDateKey } from "@/utils/date";
 
@@ -141,6 +143,24 @@ export const updateBusinessType = async (userId: string, businessType: BusinessT
   );
 };
 
+export const updateStoreSettings = async (
+  userId: string,
+  settings: { closingHour: number; promos: PromoDefinition[]; categories?: string[] },
+) => {
+  const userRef = doc(usersCollection(), userId);
+
+  await setDoc(
+    userRef,
+    compactData({
+      closingHour: settings.closingHour,
+      promos: settings.promos,
+      categories: settings.categories,
+      updatedAt: new Date().toISOString(),
+    }),
+    { merge: true },
+  );
+};
+
 export const subscribeProducts = (
   userId: string,
   businessType: BusinessType,
@@ -222,9 +242,12 @@ export const archiveProduct = async (productId: string) =>
     updatedAt: new Date().toISOString(),
   });
 
-export const addTransaction = async (payload: Omit<TransactionRecord, "id" | "createdAt">) =>
-  addDoc(
-    transactionsCollection(),
+export const addTransaction = async (payload: Omit<TransactionRecord, "id" | "createdAt">) => {
+  const batch = writeBatch(getDb());
+  const transactionRef = doc(transactionsCollection());
+
+  batch.set(
+    transactionRef,
     compactData({
       ...payload,
       createdAt: new Date().toISOString(),
@@ -232,18 +255,40 @@ export const addTransaction = async (payload: Omit<TransactionRecord, "id" | "cr
     }),
   );
 
-export const subscribeTodayClosing = (userId: string, callback: (closing: ClosingRecord | null) => void) =>
-  onSnapshot(
-    closingDocRef(userId),
+  for (const item of payload.items) {
+    if (item.stock !== undefined && item.stock !== null) {
+      const productRef = doc(productsCollection(), item.id);
+      batch.update(productRef, {
+        stock: increment(-item.qty),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  await batch.commit();
+  return transactionRef;
+};
+
+export const subscribeTodayClosing = (userId: string, callback: (closing: ClosingRecord | null) => void) => {
+  const q = query(
+    closingsCollection(),
+    where("userId", "==", userId),
+    where("dateKey", "==", localDateKey()),
+    limit(1)
+  );
+
+  return onSnapshot(
+    q,
     (snapshot) => {
-      if (!snapshot.exists()) {
+      if (snapshot.empty) {
         callback(null);
         return;
       }
 
+      const docObj = snapshot.docs[0];
       callback({
-        id: snapshot.id,
-        ...(snapshot.data() as Omit<ClosingRecord, "id">),
+        id: docObj.id,
+        ...(docObj.data() as Omit<ClosingRecord, "id">),
       });
     },
     (error) => {
@@ -251,6 +296,7 @@ export const subscribeTodayClosing = (userId: string, callback: (closing: Closin
       callback(null);
     },
   );
+};
 
 export const closeTodaySales = async (payload: {
   userId: string;
@@ -273,32 +319,97 @@ export const closeTodaySales = async (payload: {
     { merge: true },
   );
 
+export const getTransactionsByRange = async (
+  userId: string,
+  rangeStyle: keyof typeof dateRanges,
+): Promise<TransactionRecord[]> => {
+  const transactionsQuery = query(
+    transactionsCollection(),
+    where("userId", "==", userId)
+  );
+
+  const snapshot = await getDocs(transactionsQuery);
+  const minDate = typeof dateRanges[rangeStyle] === 'function' ? dateRanges[rangeStyle]() : new Date(0).toISOString();
+  
+  return snapshot.docs
+    .map((item) => item.data() as TransactionRecord)
+    .filter((t) => t.createdAt && t.createdAt >= minDate)
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+};
+
 const getTransactionsSummaryByRange = async (
   userId: string,
   rangeStyle: keyof typeof dateRanges,
 ): Promise<SalesReportSummary> => {
-  const transactionsQuery = query(
-    transactionsCollection(),
-    where("userId", "==", userId),
-    where("createdAt", ">=", dateRanges[rangeStyle]()),
-    orderBy("createdAt", "desc"),
+  const transactions = await getTransactionsByRange(userId, rangeStyle);
+  return summarizeTransactions(transactions);
+};
+
+const getAggregatedClosingsByRange = async (
+  userId: string,
+  rangeStyle: "month" | "year",
+): Promise<SalesReportSummary> => {
+  const closingsQuery = query(
+    closingsCollection(),
+    where("userId", "==", userId)
   );
 
-  const snapshot = await getDocs(transactionsQuery);
-  const transactions = snapshot.docs.map((item) => item.data() as TransactionRecord);
-  return summarizeTransactions(transactions);
+  const snapshot = await getDocs(closingsQuery);
+  const minDate = dateRanges[rangeStyle]();
+  const minDateKey = minDate.split("T")[0];
+
+  const closings = snapshot.docs
+    .map((item) => item.data() as ClosingRecord)
+    .filter((c) => c.dateKey && c.dateKey >= minDateKey);
+
+  if (closings.length === 0) {
+    return {
+      totalSales: 0,
+      transactionCount: 0,
+      bestSeller: "-",
+      avgTransaction: 0,
+      itemSold: 0,
+    };
+  }
+
+  let totalSales = 0;
+  let transactionCount = 0;
+  let itemSold = 0;
+  const bestSellerCounts: Record<string, number> = {};
+
+  for (const c of closings) {
+    totalSales += c.totalSales || 0;
+    transactionCount += c.transactionCount || 0;
+    itemSold += c.itemSold || 0;
+    
+    if (c.bestSeller && c.bestSeller !== "-") {
+      bestSellerCounts[c.bestSeller] = (bestSellerCounts[c.bestSeller] || 0) + 1;
+    }
+  }
+
+  const bestSeller = Object.entries(bestSellerCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+  const avgTransaction = transactionCount === 0 ? 0 : Math.round(totalSales / transactionCount);
+
+  return {
+    totalSales,
+    transactionCount,
+    itemSold,
+    bestSeller,
+    avgTransaction,
+  };
 };
 
 export const generateAndSaveClosingReports = async (userId: string): Promise<ClosingReports> => {
   const reports: ClosingReports = {
     day: await getTransactionsSummaryByRange(userId, "today"),
-    month: await getTransactionsSummaryByRange(userId, "month"),
-    year: await getTransactionsSummaryByRange(userId, "year"),
+    month: await getAggregatedClosingsByRange(userId, "month"),
+    year: await getAggregatedClosingsByRange(userId, "year"),
   };
 
   await setDoc(
     closingDocRef(userId),
     {
+      userId,
       reports,
       reportGeneratedAt: new Date().toISOString(),
     },
@@ -315,20 +426,22 @@ export const subscribeTransactionsByRange = (
 ) => {
   const transactionsQuery = query(
     transactionsCollection(),
-    where("userId", "==", userId),
-    where("createdAt", ">=", dateRanges[rangeStyle]()),
-    orderBy("createdAt", "desc"),
+    where("userId", "==", userId)
   );
 
   return onSnapshot(
     transactionsQuery,
     (snapshot) => {
-      callback(
-        snapshot.docs.map((item) => ({
+      const minDate = dateRanges[rangeStyle]();
+      const docs = snapshot.docs
+        .map((item) => ({
           id: item.id,
           ...(item.data() as Omit<TransactionRecord, "id">),
-        })),
-      );
+        }))
+        .filter((t) => t.createdAt && t.createdAt >= minDate)
+        .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+        
+      callback(docs);
     },
     (error) => {
       console.warn("subscribeTransactionsByRange error:", error);
@@ -345,13 +458,15 @@ export const subscribeTodayTransactions = (
 export const getDashboardMetrics = async (userId: string): Promise<DashboardMetrics> => {
   const transactionsQuery = query(
     transactionsCollection(),
-    where("userId", "==", userId),
-    where("createdAt", ">=", startOfToday()),
-    orderBy("createdAt", "desc"),
+    where("userId", "==", userId)
   );
 
   const snapshot = await getDocs(transactionsQuery);
-  const transactions = snapshot.docs.map((item) => item.data() as TransactionRecord);
+  const minDate = startOfToday();
+  const transactions = snapshot.docs
+    .map((item) => item.data() as TransactionRecord)
+    .filter((t) => t.createdAt && t.createdAt >= minDate)
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
   const summary = summarizeTransactions(transactions);
 

@@ -7,6 +7,9 @@ export interface UserProfile {
   email: string;
   businessType?: BusinessType;
   createdAt?: string;
+  closingHour?: number;
+  promos?: PromoDefinition[];
+  categories?: string[];
 }
 
 export interface Product {
@@ -28,6 +31,7 @@ export interface CartItem {
   price: number;
   category: string;
   qty: number;
+  stock?: number;
 }
 
 export type PromoType = "percentage" | "nominal";
@@ -122,4 +126,5 @@ export type AppStackParamList = {
     | undefined;
   Transactions: undefined;
   Dashboard: undefined;
+  Settings: undefined;
 };

@@ -24,9 +24,9 @@ export const RegisterScreen = ({ navigation }: Props) => {
       await register(email, password);
     } catch (error: any) {
       console.error("Registration Error:", error);
-      
+
       let errorMessage = "Coba gunakan email lain atau cek koneksi internet.";
-      
+
       if (error.code === "auth/email-already-in-use") {
         errorMessage = "Email sudah terdaftar. Gunakan email lain.";
       } else if (error.code === "auth/invalid-email") {
@@ -45,23 +45,31 @@ export const RegisterScreen = ({ navigation }: Props) => {
     <ScreenContainer scroll>
       <View className="mb-10 items-center justify-center pt-10">
         <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-brand/10">
-          <Text className="text-3xl">📝</Text>
+          <Text className="font-poppins text-3xl">📝</Text>
         </View>
-        <Text className="mt-5 text-3xl font-poppins-bold text-brand-ink">Daftar Akun</Text>
-        <Text className="mt-2 text-center text-base text-brand-muted px-10">
+        <Text className="mt-5 text-3xl font-poppins-bold text-brand-ink">
+          Daftar Akun
+        </Text>
+        <Text className="font-poppins mt-2 text-center text-base text-brand-muted px-10">
           Mulai langkah pertama untuk mendigitalkan kasir usaha Anda.
         </Text>
       </View>
 
       <View className="rounded-[40px] bg-white p-8 shadow-sm">
-        <Text className="text-2xl font-poppins-bold text-brand-ink">Informasi Akun</Text>
-        <Text className="mt-1 text-base text-brand-muted font-poppins-medium">Buat kredensial login baru.</Text>
+        <Text className="text-2xl font-poppins-bold text-brand-ink">
+          Informasi Akun
+        </Text>
+        <Text className="mt-1 text-base text-brand-muted font-poppins-medium">
+          Buat kredensial login baru.
+        </Text>
 
         <View className="mt-6 space-y-4">
           <View>
-            <Text className="mb-2 ml-1 text-sm font-poppins-semibold text-brand-ink">Alamat Email</Text>
+            <Text className="mb-2 ml-1 text-sm font-poppins-semibold text-brand-ink">
+              Alamat Email
+            </Text>
             <TextInput
-              className="rounded-2xl bg-brand-soft/20 border border-brand/5 px-5 py-4 text-base text-brand-ink"
+              className="font-poppins rounded-2xl bg-brand-soft/20 border border-brand/5 px-5 py-4 text-base text-brand-ink"
               value={email}
               onChangeText={setEmail}
               placeholder="nama@bisnis.com"
@@ -72,9 +80,11 @@ export const RegisterScreen = ({ navigation }: Props) => {
           </View>
 
           <View className="mt-4">
-            <Text className="mb-2 ml-1 text-sm font-poppins-semibold text-brand-ink">Kata Sandi</Text>
+            <Text className="mb-2 ml-1 text-sm font-poppins-semibold text-brand-ink">
+              Kata Sandi
+            </Text>
             <TextInput
-              className="rounded-2xl bg-brand-soft/20 border border-brand/5 px-5 py-4 text-base text-brand-ink"
+              className="font-poppins rounded-2xl bg-brand-soft/20 border border-brand/5 px-5 py-4 text-base text-brand-ink"
               value={password}
               onChangeText={setPassword}
               placeholder="Minimal 6 karakter"
@@ -85,19 +95,27 @@ export const RegisterScreen = ({ navigation }: Props) => {
         </View>
 
         <View className="mt-10">
-          <AppButton label="Daftar Sekarang" onPress={handleRegister} loading={isLoading} />
+          <AppButton
+            label="Daftar Sekarang"
+            onPress={handleRegister}
+            loading={isLoading}
+          />
         </View>
 
         <View className="mt-6 flex-row items-center justify-center">
-          <Text className="text-base text-brand-muted">Sudah punya akun? </Text>
+          <Text className="font-poppins text-base text-brand-muted">
+            Sudah punya akun?{" "}
+          </Text>
           <Pressable onPress={() => navigation.goBack()}>
-            <Text className="text-base font-poppins-bold text-brand">Login Disini</Text>
+            <Text className="text-base font-poppins-bold text-brand">
+              Login Disini
+            </Text>
           </Pressable>
         </View>
       </View>
-      
+
       <View className="mt-10 p-5 rounded-3xl bg-brand-soft/20 mx-4 border border-brand/5">
-        <Text className="text-sm italic text-center text-brand-muted">
+        <Text className="font-poppins text-sm italic text-center text-brand-muted">
           "Pilihan jenis usaha dapat ditentukan setelah registrasi selesai."
         </Text>
       </View>

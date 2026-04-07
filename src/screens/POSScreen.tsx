@@ -13,7 +13,10 @@ import { SearchBar } from "@/components/SearchBar";
 import { dummyProductsByType } from "@/data/dummy";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
-import { seedDummyProducts, subscribeProducts } from "@/services/firestoreService";
+import {
+  seedDummyProducts,
+  subscribeProducts,
+} from "@/services/firestoreService";
 import { AppStackParamList, Product } from "@/types";
 
 type Props = NativeStackScreenProps<AppStackParamList, "POS">;
@@ -52,9 +55,18 @@ export const POSScreen = ({ navigation, route }: Props) => {
     }
 
     seedDummyProducts(authUser.uid, profile.businessType).catch(() => null);
-    const unsubscribe = subscribeProducts(authUser.uid, profile.businessType, setProducts);
+    const unsubscribe = subscribeProducts(
+      authUser.uid,
+      profile.businessType,
+      setProducts,
+    );
     return unsubscribe;
-  }, [authUser, profile?.businessType, route.params?.tableNumber, setActiveTable]);
+  }, [
+    authUser,
+    profile?.businessType,
+    route.params?.tableNumber,
+    setActiveTable,
+  ]);
 
   const categories = useMemo(
     () => ["Semua", ...new Set(products.map((product) => product.category))],
@@ -64,8 +76,11 @@ export const POSScreen = ({ navigation, route }: Props) => {
   const filteredProducts = useMemo(
     () =>
       products.filter((product) => {
-        const sameCategory = category === "Semua" || product.category === category;
-        const sameKeyword = product.name.toLowerCase().includes(search.toLowerCase());
+        const sameCategory =
+          category === "Semua" || product.category === category;
+        const sameKeyword = product.name
+          .toLowerCase()
+          .includes(search.toLowerCase());
         return sameCategory && sameKeyword;
       }),
     [category, products, search],
@@ -121,7 +136,11 @@ export const POSScreen = ({ navigation, route }: Props) => {
 
       <View className="mb-3 flex-row">
         <View className="mr-2 flex-1">
-          <AppButton label="Dashboard" onPress={() => navigation.navigate("Dashboard")} variant="secondary" />
+          <AppButton
+            label="Dashboard"
+            onPress={() => navigation.navigate("Dashboard")}
+            variant="secondary"
+          />
         </View>
         <View className="flex-1">
           <AppButton label="Logout" onPress={handleLogout} variant="ghost" />
@@ -150,7 +169,10 @@ export const POSScreen = ({ navigation, route }: Props) => {
       </View>
 
       {filteredProducts.length === 0 ? (
-        <EmptyState title="Produk tidak ditemukan" description="Coba ubah kata kunci atau tambah produk baru." />
+        <EmptyState
+          title="Produk tidak ditemukan"
+          description="Coba ubah kata kunci atau tambah produk baru."
+        />
       ) : (
         <FlatList
           key={`list-${numColumns}`}
@@ -158,7 +180,10 @@ export const POSScreen = ({ navigation, route }: Props) => {
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
           renderItem={({ item }) => (
-            <View className="self-start px-1 pb-2" style={{ width: `${100 / numColumns}%` }}>
+            <View
+              className="self-start px-1 pb-2"
+              style={{ width: `${100 / numColumns}%` }}
+            >
               <ProductCard
                 product={item}
                 onPress={handleOpenDetail}
@@ -175,10 +200,16 @@ export const POSScreen = ({ navigation, route }: Props) => {
       )}
 
       {items.length > 0 ? (
-        <CartSummaryBar itemCount={items.length} total={total} onPress={() => navigation.navigate("Cart")} />
+        <CartSummaryBar
+          itemCount={items.length}
+          total={total}
+          onPress={() => navigation.navigate("Cart")}
+        />
       ) : (
         <View className="pt-3">
-          <Text className="text-center text-sm text-brand-muted">Keranjang masih kosong.</Text>
+          <Text className="font-poppins text-center text-sm text-brand-muted">
+            Keranjang masih kosong.
+          </Text>
         </View>
       )}
     </ScreenContainer>

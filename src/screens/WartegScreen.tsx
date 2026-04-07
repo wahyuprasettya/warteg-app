@@ -11,7 +11,10 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { dummyWartegProducts, wartegCategories } from "@/data/dummy";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
-import { seedDummyProducts, subscribeProducts } from "@/services/firestoreService";
+import {
+  seedDummyProducts,
+  subscribeProducts,
+} from "@/services/firestoreService";
 import { AppStackParamList, Product } from "@/types";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Warteg">;
@@ -42,9 +45,15 @@ export const WartegScreen = ({ navigation }: Props) => {
     return unsubscribe;
   }, [authUser]);
 
-  const combos = useMemo(() => products.filter((item) => item.category === "Paket"), [products]);
+  const combos = useMemo(
+    () => products.filter((item) => item.category === "Paket"),
+    [products],
+  );
   const visibleProducts = useMemo(
-    () => products.filter((item) => category === "Semua" || item.category === category),
+    () =>
+      products.filter(
+        (item) => category === "Semua" || item.category === category,
+      ),
     [category, products],
   );
 
@@ -81,21 +90,37 @@ export const WartegScreen = ({ navigation }: Props) => {
 
       <View className="mb-3 flex-row">
         <View className="mr-2 flex-1">
-          <AppButton label="Dashboard" onPress={() => navigation.navigate("Dashboard")} variant="secondary" />
+          <AppButton
+            label="Dashboard"
+            onPress={() => navigation.navigate("Dashboard")}
+            variant="secondary"
+          />
         </View>
         <View className="flex-1">
-          <AppButton label="Produk" onPress={() => navigation.navigate("Products")} variant="ghost" />
+          <AppButton
+            label="Produk"
+            onPress={() => navigation.navigate("Products")}
+            variant="ghost"
+          />
         </View>
       </View>
 
       {combos.length > 0 && category === "Semua" ? (
         <View className="mb-4 rounded-[32px] bg-white p-5 shadow-sm border border-brand/5">
-          <Text className="text-xl font-poppins-bold text-brand-ink">Favorit Pelanggan 🌟</Text>
-          <Text className="mt-1 text-sm text-brand-muted">Tap paket untuk transaksi kilat.</Text>
+          <Text className="text-xl font-poppins-bold text-brand-ink">
+            Favorit Pelanggan 🌟
+          </Text>
+          <Text className="font-poppins mt-1 text-sm text-brand-muted">
+            Tap paket untuk transaksi kilat.
+          </Text>
           <View className="mt-4 flex-row">
             {combos.slice(0, 2).map((combo) => (
               <View className="mr-2 flex-1" key={combo.id}>
-                <AppButton label={combo.name.replace("Paket ", "")} onPress={() => addToCart(combo)} variant="secondary" />
+                <AppButton
+                  label={combo.name.replace("Paket ", "")}
+                  onPress={() => addToCart(combo)}
+                  variant="secondary"
+                />
               </View>
             ))}
           </View>
@@ -127,7 +152,10 @@ export const WartegScreen = ({ navigation }: Props) => {
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         renderItem={({ item }) => (
-          <View className="self-start px-1 pb-2" style={{ width: `${100 / numColumns}%` }}>
+          <View
+            className="self-start px-1 pb-2"
+            style={{ width: `${100 / numColumns}%` }}
+          >
             <ProductCard
               product={item}
               onPress={handleOpenDetail}
@@ -143,10 +171,16 @@ export const WartegScreen = ({ navigation }: Props) => {
       />
 
       {items.length > 0 ? (
-        <CartSummaryBar itemCount={items.length} total={total} onPress={() => navigation.navigate("Cart")} />
+        <CartSummaryBar
+          itemCount={items.length}
+          total={total}
+          onPress={() => navigation.navigate("Cart")}
+        />
       ) : (
         <View className="pt-3 items-center">
-          <Text className="text-center text-sm text-brand-muted">Pilih menu prasmanan diatas.</Text>
+          <Text className="font-poppins text-center text-sm text-brand-muted">
+            Pilih menu prasmanan diatas.
+          </Text>
         </View>
       )}
     </ScreenContainer>

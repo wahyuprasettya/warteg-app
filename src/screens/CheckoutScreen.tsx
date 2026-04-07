@@ -48,7 +48,9 @@ export const CheckoutScreen = ({ navigation }: Props) => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(null);
+  const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(
+    null,
+  );
 
   const paymentStatus = useMemo(() => {
     if (paymentMethod === "cash") {
@@ -59,9 +61,11 @@ export const CheckoutScreen = ({ navigation }: Props) => {
   }, [paymentConfirmed, paymentMethod]);
 
   const displaySubtotal = completedOrder?.subtotal ?? subtotal;
-  const displayManualDiscount = completedOrder?.manualDiscount ?? manualDiscount;
+  const displayManualDiscount =
+    completedOrder?.manualDiscount ?? manualDiscount;
   const displayPromoDiscount = completedOrder?.promoDiscount ?? promoDiscount;
-  const displayDiscountAmount = completedOrder?.discountAmount ?? discountAmount;
+  const displayDiscountAmount =
+    completedOrder?.discountAmount ?? discountAmount;
   const displayTotal = completedOrder?.total ?? total;
   const displayPaymentStatus = completedOrder?.paymentStatus ?? paymentStatus;
   const displayCustomerName = completedOrder?.customerName ?? customerName;
@@ -78,7 +82,10 @@ export const CheckoutScreen = ({ navigation }: Props) => {
         message: completedOrder.receiptText,
       });
     } catch (error) {
-      Alert.alert("Print nota gagal", "Nota belum bisa dibagikan dari perangkat ini.");
+      Alert.alert(
+        "Print nota gagal",
+        "Nota belum bisa dibagikan dari perangkat ini.",
+      );
     }
   };
 
@@ -127,7 +134,10 @@ export const CheckoutScreen = ({ navigation }: Props) => {
         activeTable ? `Meja    : ${activeTable}` : null,
         `Metode  : ${paymentMethod.toUpperCase()}`,
         "------------------------------",
-        ...items.map((item) => `${item.name} x${item.qty}  ${formatIDR(item.price * item.qty)}`),
+        ...items.map(
+          (item) =>
+            `${item.name} x${item.qty}  ${formatIDR(item.price * item.qty)}`,
+        ),
         "------------------------------",
         `Subtotal : ${formatIDR(subtotal)}`,
         `Diskon   : -${formatIDR(discountAmount)}`,
@@ -159,7 +169,10 @@ export const CheckoutScreen = ({ navigation }: Props) => {
           : "Pesanan disimpan sebagai pending. Nota siap diprint.",
       );
     } catch (error) {
-      Alert.alert("Checkout gagal", "Transaksi belum bisa disimpan ke Firestore.");
+      Alert.alert(
+        "Checkout gagal",
+        "Transaksi belum bisa disimpan ke Firestore.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -173,12 +186,14 @@ export const CheckoutScreen = ({ navigation }: Props) => {
       />
 
       <View className="rounded-[28px] bg-white p-5">
-        <Text className="text-lg font-poppins-bold text-brand-ink">Data Pembeli</Text>
-        <Text className="mt-1 text-sm text-brand-muted">
+        <Text className="text-lg font-poppins-bold text-brand-ink">
+          Data Pembeli
+        </Text>
+        <Text className="font-poppins mt-1 text-sm text-brand-muted">
           Isi nama pembeli agar nota lebih rapi dan mudah dilacak.
         </Text>
         <TextInput
-          className="mt-4 rounded-2xl border border-brand/15 px-4 py-4 text-base"
+          className="font-poppins mt-4 rounded-2xl border border-brand/15 px-4 py-4 text-base"
           placeholder="Nama pembeli"
           value={displayCustomerName}
           onChangeText={setCustomerName}
@@ -186,7 +201,9 @@ export const CheckoutScreen = ({ navigation }: Props) => {
         />
         {completedOrder?.cashierName ? (
           <View className="mt-4 rounded-2xl bg-brand-soft/40 px-4 py-3">
-            <Text className="text-xs uppercase tracking-[1px] text-brand-muted">Kasir</Text>
+            <Text className="font-poppins text-xs uppercase tracking-[1px] text-brand-muted">
+              Kasir
+            </Text>
             <Text className="mt-1 text-base font-poppins-semibold text-brand-ink">
               {completedOrder.cashierName}
             </Text>
@@ -195,46 +212,80 @@ export const CheckoutScreen = ({ navigation }: Props) => {
       </View>
 
       <View className="mt-4 rounded-[28px] bg-white p-5">
-        <Text className="text-base text-brand-muted">Total bayar</Text>
-        <Text className="mt-2 text-4xl font-poppins-bold text-brand">{formatIDR(displayTotal)}</Text>
-        {displayTable ? <Text className="mt-2 text-base text-brand-muted">{displayTable}</Text> : null}
+        <Text className="font-poppins text-base text-brand-muted">
+          Total bayar
+        </Text>
+        <Text className="mt-2 text-4xl font-poppins-bold text-brand">
+          {formatIDR(displayTotal)}
+        </Text>
+        {displayTable ? (
+          <Text className="font-poppins mt-2 text-base text-brand-muted">
+            {displayTable}
+          </Text>
+        ) : null}
       </View>
 
       <View className="mt-4 rounded-[28px] bg-white p-5">
-        <Text className="text-lg font-poppins-bold text-brand-ink">Ringkasan Tagihan</Text>
+        <Text className="text-lg font-poppins-bold text-brand-ink">
+          Ringkasan Tagihan
+        </Text>
         <View className="mt-4">
           <View className="mb-3 flex-row items-center justify-between">
-            <Text className="text-sm text-brand-muted">Subtotal</Text>
-            <Text className="text-sm font-poppins-bold text-brand-ink">{formatIDR(displaySubtotal)}</Text>
+            <Text className="font-poppins text-sm text-brand-muted">
+              Subtotal
+            </Text>
+            <Text className="text-sm font-poppins-bold text-brand-ink">
+              {formatIDR(displaySubtotal)}
+            </Text>
           </View>
           <View className="mb-3 flex-row items-center justify-between">
-            <Text className="text-sm text-brand-muted">Diskon manual</Text>
-            <Text className="text-sm font-poppins-bold text-brand-ink">-{formatIDR(displayManualDiscount)}</Text>
+            <Text className="font-poppins text-sm text-brand-muted">
+              Diskon manual
+            </Text>
+            <Text className="text-sm font-poppins-bold text-brand-ink">
+              -{formatIDR(displayManualDiscount)}
+            </Text>
           </View>
           <View className="mb-3 flex-row items-center justify-between">
             <View className="flex-1 pr-3">
-              <Text className="text-sm text-brand-muted">Promo</Text>
+              <Text className="font-poppins text-sm text-brand-muted">
+                Promo
+              </Text>
               {activePromo ? (
-                <Text className="mt-1 text-xs text-brand-muted">{activePromo.code} • {activePromo.label}</Text>
+                <Text className="font-poppins mt-1 text-xs text-brand-muted">
+                  {activePromo.code} • {activePromo.label}
+                </Text>
               ) : null}
             </View>
-            <Text className="text-sm font-poppins-bold text-brand-ink">-{formatIDR(displayPromoDiscount)}</Text>
+            <Text className="text-sm font-poppins-bold text-brand-ink">
+              -{formatIDR(displayPromoDiscount)}
+            </Text>
           </View>
           <View className="mb-3 flex-row items-center justify-between">
-            <Text className="text-sm font-poppins-semibold text-brand-ink">Total diskon</Text>
-            <Text className="text-sm font-poppins-bold text-brand">-{formatIDR(displayDiscountAmount)}</Text>
+            <Text className="text-sm font-poppins-semibold text-brand-ink">
+              Total diskon
+            </Text>
+            <Text className="text-sm font-poppins-bold text-brand">
+              -{formatIDR(displayDiscountAmount)}
+            </Text>
           </View>
           <View className="h-px bg-brand/10" />
           <View className="mt-3 flex-row items-center justify-between">
-            <Text className="text-sm font-poppins-semibold text-brand-ink">Total akhir</Text>
-            <Text className="text-xl font-poppins-bold text-brand">{formatIDR(displayTotal)}</Text>
+            <Text className="text-sm font-poppins-semibold text-brand-ink">
+              Total akhir
+            </Text>
+            <Text className="text-xl font-poppins-bold text-brand">
+              {formatIDR(displayTotal)}
+            </Text>
           </View>
         </View>
       </View>
 
       {!completedOrder ? (
         <View className="mt-4 rounded-[28px] bg-white p-5">
-          <Text className="text-lg font-poppins-bold text-brand-ink">Metode Pembayaran</Text>
+          <Text className="text-lg font-poppins-bold text-brand-ink">
+            Metode Pembayaran
+          </Text>
           <View className="mt-3">
             {paymentOptions.map((option) => (
               <View className="mb-2" key={option}>
@@ -251,14 +302,24 @@ export const CheckoutScreen = ({ navigation }: Props) => {
 
       {paymentMethod === "qris" && !completedOrder ? (
         <View className="mt-4 rounded-[28px] bg-white p-5">
-          <Text className="text-lg font-poppins-bold text-brand-ink">QRIS Manual</Text>
+          <Text className="text-lg font-poppins-bold text-brand-ink">
+            QRIS Manual
+          </Text>
           <View className="mt-4 h-56 items-center justify-center rounded-[28px] border-2 border-dashed border-brand/25 bg-brand-soft">
-            <Text className="text-2xl font-poppins-bold text-brand">QRIS STATIS</Text>
-            <Text className="mt-2 text-center text-brand-muted">Tempel QR merchant di area ini.</Text>
+            <Text className="text-2xl font-poppins-bold text-brand">
+              QRIS STATIS
+            </Text>
+            <Text className="font-poppins mt-2 text-center text-brand-muted">
+              Tempel QR merchant di area ini.
+            </Text>
           </View>
           <View className="mt-4">
             <AppButton
-              label={paymentConfirmed ? "Pembayaran Sudah Terkonfirmasi" : "Sudah Dibayar"}
+              label={
+                paymentConfirmed
+                  ? "Pembayaran Sudah Terkonfirmasi"
+                  : "Sudah Dibayar"
+              }
               onPress={() => setPaymentConfirmed(true)}
               variant={paymentConfirmed ? "secondary" : "ghost"}
             />
@@ -268,13 +329,19 @@ export const CheckoutScreen = ({ navigation }: Props) => {
 
       {paymentMethod === "transfer" && !completedOrder ? (
         <View className="mt-4 rounded-[28px] bg-white p-5">
-          <Text className="text-lg font-poppins-bold text-brand-ink">Transfer Manual</Text>
-          <Text className="mt-2 text-base text-brand-muted">
+          <Text className="text-lg font-poppins-bold text-brand-ink">
+            Transfer Manual
+          </Text>
+          <Text className="font-poppins mt-2 text-base text-brand-muted">
             Tandai dibayar jika transfer sudah diverifikasi oleh kasir.
           </Text>
           <View className="mt-4">
             <AppButton
-              label={paymentConfirmed ? "Transfer Sudah Dicek" : "Tandai Sudah Dibayar"}
+              label={
+                paymentConfirmed
+                  ? "Transfer Sudah Dicek"
+                  : "Tandai Sudah Dibayar"
+              }
               onPress={() => setPaymentConfirmed(true)}
               variant={paymentConfirmed ? "secondary" : "ghost"}
             />
@@ -283,14 +350,22 @@ export const CheckoutScreen = ({ navigation }: Props) => {
       ) : null}
 
       <View className="mt-4 rounded-[28px] bg-brand p-5">
-        <Text className="text-sm font-poppins-semibold text-white/80">Status pembayaran</Text>
-        <Text className="mt-2 text-2xl font-poppins-bold text-white">{displayPaymentStatus.toUpperCase()}</Text>
+        <Text className="text-sm font-poppins-semibold text-white/80">
+          Status pembayaran
+        </Text>
+        <Text className="mt-2 text-2xl font-poppins-bold text-white">
+          {displayPaymentStatus.toUpperCase()}
+        </Text>
       </View>
 
       {!completedOrder ? (
         <View className="mt-4">
           <AppButton
-            label={profile?.businessType === "restoran" ? "Simpan Pesanan / Bayar" : "Simpan Transaksi"}
+            label={
+              profile?.businessType === "restoran"
+                ? "Simpan Pesanan / Bayar"
+                : "Simpan Transaksi"
+            }
             onPress={handleCheckout}
             loading={isSubmitting}
           />
@@ -299,13 +374,17 @@ export const CheckoutScreen = ({ navigation }: Props) => {
 
       {completedOrder ? (
         <View className="mt-4 rounded-[28px] bg-white p-5">
-          <Text className="text-lg font-poppins-bold text-brand-ink">Print Nota</Text>
-          <Text className="mt-1 text-sm text-brand-muted">
+          <Text className="text-lg font-poppins-bold text-brand-ink">
+            Print Nota
+          </Text>
+          <Text className="font-poppins mt-1 text-sm text-brand-muted">
             Nota siap dicek atau dicetak dari perangkat kasir.
           </Text>
 
           <View className="mt-4 rounded-[24px] bg-brand-soft/30 p-4">
-            <Text className="font-mono text-xs leading-6 text-brand-ink">{completedOrder.receiptText}</Text>
+            <Text className="font-poppins font-mono text-xs leading-6 text-brand-ink">
+              {completedOrder.receiptText}
+            </Text>
           </View>
 
           <View className="mt-4">

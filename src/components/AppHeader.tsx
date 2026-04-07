@@ -25,12 +25,12 @@ export const AppHeader = ({ title, subtitle, actionLabel, actionIcon, onActionPr
         <View className="flex-row items-center rounded-[18px] bg-brand-soft/40 px-2.5 py-1.5">
           {actionIcon ? (
             <View className="mr-2 h-7 w-7 items-center justify-center rounded-full bg-white">
-              <Text className="text-xs">{actionIcon}</Text>
+              <Text className="font-poppins text-xs">{actionIcon}</Text>
             </View>
           ) : null}
           <Text className="text-sm font-poppins-bold text-brand">{actionLabel}</Text>
           <View className="ml-2 h-7 w-7 items-center justify-center rounded-full bg-brand">
-            <Text className="text-xs font-poppins-bold text-white">></Text>
+            <Text className="text-xs font-poppins-bold text-white">{">"}</Text>
           </View>
         </View>
       </Pressable>

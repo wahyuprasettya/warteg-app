@@ -1,9 +1,26 @@
-import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { User } from "firebase/auth";
 
 import { isFirebaseConfigured } from "@/firebase/config";
-import { createUserProfile, getUserProfile, seedDummyProducts, updateBusinessType } from "@/services/firestoreService";
-import { loginWithEmail, logout, registerWithEmail, subscribeAuth } from "@/services/authService";
+import {
+  createUserProfile,
+  getUserProfile,
+  seedDummyProducts,
+  updateBusinessType,
+} from "@/services/firestoreService";
+import {
+  loginWithEmail,
+  logout,
+  registerWithEmail,
+  subscribeAuth,
+} from "@/services/authService";
 import { BusinessType, UserProfile } from "@/types";
 
 interface AuthContextValue {
@@ -83,7 +100,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(true);
         try {
           const credential = await registerWithEmail(email, password);
-          await createUserProfile(credential.user.uid, credential.user.email ?? email);
+          await createUserProfile(
+            credential.user.uid,
+            credential.user.email ?? email,
+          );
         } finally {
           setIsLoading(false);
         }

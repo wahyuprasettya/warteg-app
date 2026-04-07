@@ -31,7 +31,9 @@ export const AppButton = ({
       {loading ? (
         <ActivityIndicator color="#ffffff" />
       ) : (
-        <Text className={`text-base font-poppins-bold ${variant === "ghost" ? "text-brand-ink" : "text-white"}`}>
+        <Text
+          className={`text-base font-poppins-bold ${variant === "ghost" ? "text-brand-ink" : "text-white"}`}
+        >
           {label}
         </Text>
       )}
