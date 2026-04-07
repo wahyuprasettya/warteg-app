@@ -23,9 +23,24 @@ export const LoginScreen = ({ navigation }: Props) => {
     try {
       await login(email, password);
     } catch (error: any) {
+      console.error("Login Error:", error);
+
+      let errorMessage = "Terjadi kesalahan saat masuk. Periksa koneksi internet Anda.";
+
+      if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+        errorMessage = "Email atau password yang Anda masukkan salah. Silakan coba lagi.";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Format alamat email tidak valid.";
+      } else if (error.code === "auth/user-disabled") {
+        errorMessage = "Akun ini telah dinonaktifkan. Silakan hubungi admin.";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMessage = "Terlalu banyak percobaan masuk yang gagal. Silakan coba lagi nanti.";
+      }
+
       Alert.alert(
-        "Login gagal",
-        error.message || "Periksa email dan password Anda.",
+        "Gagal Masuk 🥘",
+        errorMessage,
+        [{ text: "Coba Lagi", style: "default" }]
       );
     }
   };
@@ -37,7 +52,7 @@ export const LoginScreen = ({ navigation }: Props) => {
           <Text className="font-poppins text-4xl">🥘</Text>
         </View>
         <Text className="mt-5 text-4xl font-poppins-bold text-brand-ink">
-          WartegPOS
+          KasirAPP
         </Text>
         <Text className="mt-2 text-center font-poppins-medium text-base text-brand-muted px-10">
           Kasir digital modern untuk usaha kuliner & toko retail Anda.
@@ -122,7 +137,7 @@ export const LoginScreen = ({ navigation }: Props) => {
 
       <View className="mt-12 items-center opacity-40">
         <Text className="font-poppins text-xs text-brand-muted">
-          WartegPOS v1.0.0 • Made with ❤️
+          WartegPOS v1.0.0 • Made with Wahyu adjie prasetyo
         </Text>
       </View>
     </ScreenContainer>

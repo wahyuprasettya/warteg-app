@@ -15,7 +15,9 @@ import {
   subscribeTransactionsByRange,
   summarizeTransactions,
   getTransactionsByRange,
+  subscribeProducts,
 } from "@/services/firestoreService";
+import { StockReportCard } from "@/components/Report/StockReportCard";
 import {
   AppStackParamList,
   BusinessType,
@@ -23,6 +25,7 @@ import {
   ClosingReports,
   SalesReportSummary,
   TransactionRecord,
+  Product,
 } from "@/types";
 import { formatIDR } from "@/utils/currency";
 import { exportTransactionsToExcel, exportTransactionsToPDF } from "@/utils/exportTools";
@@ -121,6 +124,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const [isClosing, setIsClosing] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     if (!authUser) {
@@ -156,6 +160,19 @@ export const DashboardScreen = ({ navigation }: Props) => {
     const unsubscribe = subscribeTodayClosing(authUser.uid, setTodayClosing);
     return unsubscribe;
   }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser || !profile?.businessType) {
+      return;
+    }
+
+    const unsubscribe = subscribeProducts(
+      authUser.uid,
+      profile.businessType,
+      setProducts,
+    );
+    return unsubscribe;
+  }, [authUser, profile?.businessType]);
 
   const summary = useMemo(
     () => summarizeTransactions(transactions),
@@ -296,9 +313,9 @@ export const DashboardScreen = ({ navigation }: Props) => {
               setIsClosing(true);
               await closeTodaySales({
                 userId: authUser.uid,
-                businessType: profile.businessType,
+                businessType: profile?.businessType || "warung",
                 cashierName,
-                cashierEmail: profile.email,
+                cashierEmail: profile?.email || "",
                 summary: todaySummary,
               });
               Alert.alert(
@@ -598,6 +615,8 @@ export const DashboardScreen = ({ navigation }: Props) => {
         </View>
       </View>
 
+      <StockReportCard products={products} />
+
       {todayClosing?.reports ? (
         <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
           <View className="mb-3 flex-row items-center justify-between">
@@ -705,33 +724,58 @@ export const DashboardScreen = ({ navigation }: Props) => {
           Pindah ke layar penting tanpa muter-muter menu.
         </Text>
 
-        <View className="mt-3 flex-row flex-wrap justify-between">
-          {actionCards.map((action) => (
-            <Pressable
-              key={action.label}
-              className={`mb-3 rounded-[26px] border p-4 ${
-                action.accent
-                  ? "border-brand/20 bg-brand-soft/70"
-                  : "border-brand/5 bg-white"
-              }`}
-              style={{ width: "48.5%" }}
-              onPress={action.onPress}
-            >
-              <View
-                className={`h-12 w-12 items-center justify-center rounded-[18px] ${
-                  action.accent ? "bg-brand" : "bg-brand-soft/60"
-                }`}
-              >
-                <Text className="font-poppins text-xl">{action.icon}</Text>
+        <View className="mt-4">
+          <Pressable
+            key={actionCards[0].label}
+            className="mb-4 overflow-hidden rounded-[28px] border border-brand/20 bg-brand p-5 shadow-sm active:opacity-80"
+            onPress={actionCards[0].onPress}
+          >
+            <View className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10" />
+            <View className="absolute -bottom-8 -left-4 h-20 w-20 rounded-full bg-white/10" />
+            
+            <View className="flex-row items-center">
+              <View className="mr-4 h-16 w-16 items-center justify-center rounded-[20px] bg-white/20">
+                <Text className="font-poppins text-3xl">{actionCards[0].icon}</Text>
               </View>
-              <Text className="mt-4 text-base font-poppins-bold text-brand-ink">
-                {action.label}
-              </Text>
-              <Text className="font-poppins mt-1 text-sm leading-5 text-brand-muted">
-                {action.hint}
-              </Text>
-            </Pressable>
-          ))}
+              <View className="flex-1 pr-2">
+                <Text className="text-xl font-poppins-bold text-white">
+                  {actionCards[0].label}
+                </Text>
+                <Text className="font-poppins mt-1 text-sm leading-5 text-white/80">
+                  {actionCards[0].hint}
+                </Text>
+              </View>
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-white/20">
+                <Text className="font-poppins-bold text-xl text-white">
+                  →
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+
+          <View className="flex-row flex-wrap justify-between">
+            {actionCards.slice(1).map((action) => (
+              <Pressable
+                key={action.label}
+                className="mb-4 items-center rounded-[24px] border border-brand/5 bg-white p-5 shadow-sm active:opacity-80"
+                style={{ width: "48%" }}
+                onPress={action.onPress}
+              >
+                <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-brand-soft/60">
+                  <Text className="font-poppins text-2xl">{action.icon}</Text>
+                </View>
+                <Text className="text-center text-sm font-poppins-bold text-brand-ink">
+                  {action.label}
+                </Text>
+                <Text
+                  className="font-poppins mt-1 text-center text-xs leading-4 text-brand-muted"
+                  numberOfLines={2}
+                >
+                  {action.hint}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </View>
 

@@ -169,13 +169,16 @@ export const POSScreen = ({ navigation, route }: Props) => {
       </View>
 
       {filteredProducts.length === 0 ? (
-        <EmptyState
-          title="Produk tidak ditemukan"
-          description="Coba ubah kata kunci atau tambah produk baru."
-        />
+        <View className="mt-3">
+          <EmptyState
+            title="Produk tidak ditemukan"
+            description="Coba ubah kata kunci atau tambah produk baru."
+          />
+        </View>
       ) : (
         <FlatList
           key={`list-${numColumns}`}
+          className="mt-3"
           data={filteredProducts}
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
