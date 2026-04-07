@@ -26,7 +26,7 @@ export const AppNavigator = () => {
     return (
       <View className="flex-1 items-center justify-center bg-brand-soft">
         <ActivityIndicator size="large" color="#A63D40" />
-        <Text className="mt-4 text-base text-brand-ink">Menyiapkan aplikasi kasir...</Text>
+        <Text className="mt-4 text-base text-brand-ink font-poppins-medium">Menyiapkan aplikasi kasir...</Text>
       </View>
     );
   }

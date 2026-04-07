@@ -34,7 +34,7 @@ export const LoginScreen = ({ navigation }: Props) => {
           <Text className="text-4xl">🥘</Text>
         </View>
         <Text className="mt-5 text-4xl font-poppins-bold text-brand-ink">WartegPOS</Text>
-        <Text className="mt-2 text-center text-base text-brand-muted px-10">
+        <Text className="mt-2 text-center font-poppins-medium text-base text-brand-muted px-10">
           Kasir digital modern untuk usaha kuliner & toko retail Anda.
         </Text>
       </View>
@@ -50,13 +50,13 @@ export const LoginScreen = ({ navigation }: Props) => {
 
       <View className="rounded-[40px] bg-white p-8 shadow-sm">
         <Text className="text-3xl font-poppins-bold text-brand-ink">Selamat Datang</Text>
-        <Text className="mt-1 text-base text-brand-muted">Masuk ke akun Anda untuk mulai jualan.</Text>
+        <Text className="mt-1 text-base text-brand-muted font-poppins-medium">Masuk ke akun Anda untuk mulai jualan.</Text>
 
         <View className="mt-8 space-y-4">
           <View>
             <Text className="mb-2 ml-1 text-sm font-poppins-semibold text-brand-ink">Alamat Email</Text>
             <TextInput
-              className="rounded-2xl bg-brand-soft/20 border border-brand/5 px-5 py-4 text-base text-brand-ink"
+              className="text-sm font-poppins-medium rounded-2xl bg-brand-soft/20 border border-brand/5 px-5 py-4 text-base text-brand-ink"
               value={email}
               onChangeText={setEmail}
               placeholder="nama@bisnis.com"
@@ -72,9 +72,10 @@ export const LoginScreen = ({ navigation }: Props) => {
               <Text className="text-sm font-poppins-semibold text-brand">Lupa?</Text>
             </View>
             <TextInput
-              className="rounded-2xl bg-brand-soft/20 border border-brand/5 px-5 py-4 text-base text-brand-ink"
+              className="text-sm font-poppins-medium rounded-2xl bg-brand-soft/20 border border-brand/5 px-5 py-4 text-base text-brand-ink "
               value={password}
               onChangeText={setPassword}
+              
               placeholder="••••••••"
               secureTextEntry
               placeholderTextColor="#8B7E74"

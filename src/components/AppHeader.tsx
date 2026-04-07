@@ -13,7 +13,7 @@ export const AppHeader = ({ title, subtitle, actionLabel, actionIcon, onActionPr
     <View className="flex-1 pr-3">
       <Text className="text-3xl font-poppins-bold text-brand-ink">{title}</Text>
       {subtitle ? (
-        <Text className="mt-1.5 text-sm leading-5 text-brand-muted">{subtitle}</Text>
+        <Text className="mt-1.5 font-poppins-medium text-sm leading-5 text-brand-muted">{subtitle}</Text>
       ) : null}
     </View>
 
