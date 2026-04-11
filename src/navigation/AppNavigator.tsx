@@ -1,4 +1,3 @@
-import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, Text, View } from "react-native";
 
@@ -12,11 +11,12 @@ import { LoginScreen } from "@/screens/LoginScreen";
 import { POSScreen } from "@/screens/POSScreen";
 import { ProductScreen } from "@/screens/ProductScreen";
 import { RegisterScreen } from "@/screens/RegisterScreen";
-import { SetupBusinessScreen } from "@/screens/SetupBusinessScreen";
-import { TableScreen } from "@/screens/TableScreen";
 import { TransactionHistoryScreen } from "@/screens/TransactionHistoryScreen";
-import { WartegScreen } from "@/screens/WartegScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
+import { OrderListScreen } from "@/screens/OrderListScreen";
+import { CustomerOrderScreen } from "@/screens/CustomerOrderScreen";
+import { CashierManagementScreen } from "@/screens/CashierManagementScreen";
+import { PaymentScreen } from "@/screens/PaymentScreen";
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -25,54 +25,56 @@ export const AppNavigator = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-brand-soft">
-        <ActivityIndicator size="large" color="#A63D40" />
-        <Text className="mt-4 text-base text-brand-ink font-poppins-medium">
-          Menyiapkan aplikasi kasir...
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fcfaf8' }}>
+        <ActivityIndicator size="large" color="#c17d3c" />
+        <Text style={{ fontFamily: 'Poppins-Bold', marginTop: 16, color: '#c17d3c' }}>
+          Menyiapkan aplikasi...
         </Text>
       </View>
     );
   }
 
-  const initialBusinessRoute =
-    profile?.businessType === "restoran"
-      ? "Table"
-      : profile?.businessType === "warteg"
-        ? "Warteg"
-        : "POS";
+  const isOwner = profile?.role === "owner";
 
   return (
-    <NavigationContainer>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
       {!authUser ? (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        // Auth Group
+        <Stack.Group>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
-        </Stack.Navigator>
-      ) : !profile?.businessType ? (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="SetupBusiness" component={SetupBusinessScreen} />
-        </Stack.Navigator>
-      ) : (
-        <Stack.Navigator
-          key={profile.businessType}
-          initialRouteName={initialBusinessRoute}
-          screenOptions={{ headerShown: false }}
-        >
+          <Stack.Screen name="CustomerOrder" component={CustomerOrderScreen} />
+        </Stack.Group>
+      ) : isOwner ? (
+        // Owner Group
+        <Stack.Group>
+          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <Stack.Screen name="OrderList" component={OrderListScreen} />
           <Stack.Screen name="POS" component={POSScreen} />
-          <Stack.Screen name="Warteg" component={WartegScreen} />
-          <Stack.Screen name="Table" component={TableScreen} />
           <Stack.Screen name="Cart" component={CartScreen} />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
+          <Stack.Screen name="CustomerOrder" component={CustomerOrderScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="CashierManagement" component={CashierManagementScreen} />
+          <Stack.Screen name="Payment" component={PaymentScreen} />
+          <Stack.Screen name="Transactions" component={TransactionHistoryScreen} />
           <Stack.Screen name="Products" component={ProductScreen} />
           <Stack.Screen name="AddProduct" component={AddProductScreen} />
-          <Stack.Screen
-            name="Transactions"
-            component={TransactionHistoryScreen}
-          />
-          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        </Stack.Group>
+      ) : (
+        // Cashier Group
+        <Stack.Group>
+          <Stack.Screen name="OrderList" component={OrderListScreen} />
+          <Stack.Screen name="POS" component={POSScreen} />
+          <Stack.Screen name="Cart" component={CartScreen} />
+          <Stack.Screen name="Checkout" component={CheckoutScreen} />
+          <Stack.Screen name="CustomerOrder" component={CustomerOrderScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
-        </Stack.Navigator>
+          <Stack.Screen name="Payment" component={PaymentScreen} />
+          <Stack.Screen name="Products" component={ProductScreen} />
+          <Stack.Screen name="AddProduct" component={AddProductScreen} />
+        </Stack.Group>
       )}
-    </NavigationContainer>
+    </Stack.Navigator>
   );
 };

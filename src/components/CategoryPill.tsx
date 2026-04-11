@@ -24,8 +24,7 @@ export const CategoryPill = ({
       </Text>
     ) : null}
     <Text
-      style={[styles.label, active ? styles.labelActive : styles.labelInactive]}
-      className="font-poppins"
+      style={[styles.label, active ? styles.labelActive : styles.labelInactive, { fontFamily: active ? 'Poppins-Bold' : 'Poppins' }]}
     >
       {label}
     </Text>

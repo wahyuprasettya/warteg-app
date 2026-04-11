@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
-import { FlatList, Text, View } from "react-native";
+import { FlatList, Text, View, Alert } from "react-native";
 
 import { AppButton } from "@/components/AppButton";
 import { AppHeader } from "@/components/AppHeader";
@@ -9,47 +9,66 @@ import { TableCard } from "@/components/TableCard";
 import { restaurantTables } from "@/data/dummy";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
-import { subscribeTodayTransactions } from "@/services/firestoreService";
+import { subscribeOrders, subscribeTables } from "@/services/firestoreService";
 import { AppStackParamList, RestaurantTable } from "@/types";
+import { isTableOrder } from "@/utils/order";
+import { resolveStoreUserId } from "@/utils/store";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Table">;
 
 export const TableScreen = ({ navigation }: Props) => {
-  const { authUser } = useAuth();
+  const { authUser, profile } = useAuth();
   const { setActiveTable, clearCart } = useCart();
-  const [tables, setTables] = useState<RestaurantTable[]>(restaurantTables);
+  const [tables, setTables] = useState<RestaurantTable[]>([]);
+  const storeUserId = resolveStoreUserId(authUser?.uid, profile);
 
   useEffect(() => {
-    if (!authUser) {
+    if (!authUser || !storeUserId) {
       return;
     }
 
-    const unsubscribe = subscribeTodayTransactions(
-      authUser.uid,
-      (transactions) => {
-        const occupiedTables = new Set(
-          transactions
-            .filter(
-              (transaction) =>
-                transaction.paymentStatus === "pending" &&
-                transaction.tableNumber,
-            )
-            .map((transaction) => transaction.tableNumber as string),
-        );
+    // 1. Subscribe to the Master Table List (from Owner Settings)
+    const unsubTables = subscribeTables(storeUserId, (tableList) => {
+      // 2. Subscribe to Orders to determine which tables are occupied
+      const unsubOrders = subscribeOrders(
+        storeUserId,
+        (orders) => {
+          const occupiedTables = new Set(
+            orders
+              .filter(
+                (order) =>
+                  order.status !== "done" &&
+                  isTableOrder(order) &&
+                  (order.tableNumber || order.tableId),
+              )
+              .map((order) => (order.tableNumber || order.tableId) as string),
+          );
 
-        setTables(
-          restaurantTables.map((table) => ({
-            ...table,
-            status: occupiedTables.has(table.number) ? "terisi" : "kosong",
-          })),
-        );
-      },
-    );
+          // Transform string list to RestaurantTable objects with live status
+          const updated = tableList.map((num) => ({
+            number: num,
+            status: occupiedTables.has(num) ? "terisi" : "kosong",
+          })) as RestaurantTable[];
 
-    return unsubscribe;
-  }, [authUser]);
+          setTables(updated);
+        },
+      );
+
+      return unsubOrders;
+    });
+
+    return unsubTables;
+  }, [authUser, storeUserId]);
 
   const handleSelectTable = (tableNumber: string) => {
+    const table = tables.find((t) => t.number === tableNumber);
+    if (table?.status === "terisi") {
+      Alert.alert(
+        "Meja Terisi",
+        "Meja ini sudah memiliki pesanan aktif. Silakan selesaikan pesanan di daftar order terlebih dahulu."
+      );
+      return;
+    }
     clearCart();
     setActiveTable(tableNumber);
     navigation.navigate("POS", { tableNumber });
@@ -64,11 +83,42 @@ export const TableScreen = ({ navigation }: Props) => {
         onActionPress={() => navigation.navigate("Dashboard")}
       />
 
+      {/* Table Statistics Summary */}
+      <View className="mb-4 flex-row justify-between">
+        <View className="flex-1 mr-2 rounded-[24px] bg-white p-4 items-center">
+          <Text className="text-2xl font-poppins-bold text-brand-ink">{tables.length}</Text>
+          <Text className="text-[10px] font-poppins-semibold text-brand-muted uppercase">Total Meja</Text>
+        </View>
+        <View className="flex-1 mx-1 rounded-[24px] bg-white p-4 items-center">
+          <Text className="text-2xl font-poppins-bold text-emerald-600">
+            {tables.filter(t => t.status === 'kosong').length}
+          </Text>
+          <Text className="text-[10px] font-poppins-semibold text-brand-muted uppercase">Kosong</Text>
+        </View>
+        <View className="flex-1 ml-2 rounded-[24px] bg-white p-4 items-center">
+          <Text className="text-2xl font-poppins-bold text-amber-600">
+            {tables.filter(t => t.status === 'terisi').length}
+          </Text>
+          <Text className="text-[10px] font-poppins-semibold text-brand-muted uppercase">Terisi</Text>
+        </View>
+      </View>
+
       <View className="mb-4 rounded-[28px] bg-white p-4">
-        <Text className="font-poppins text-base text-brand-ink">
-          Meja berstatus <Text className="font-poppins-bold">terisi</Text>{" "}
-          menandakan ada transaksi dengan pembayaran pending.
+        <Text className="font-poppins text-sm text-brand-ink">
+          {tables.length === 0 
+            ? "Belum ada meja didaftarkan. Silakan ke Pengaturan untuk menambah meja."
+            : "Ketuk nomor meja untuk mulai mencatat pesanan baru."
+          }
         </Text>
+        {tables.length === 0 && (
+          <View className="mt-3">
+            <AppButton 
+              label="Ke Pengaturan Meja" 
+              onPress={() => navigation.navigate("Settings")}
+              variant="secondary"
+            />
+          </View>
+        )}
       </View>
 
       <FlatList
@@ -79,6 +129,11 @@ export const TableScreen = ({ navigation }: Props) => {
           <TableCard table={item} onPress={handleSelectTable} />
         )}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View className="mt-10 items-center">
+            <Text className="font-poppins text-brand-muted">Daftar meja kosong.</Text>
+          </View>
+        }
       />
     </ScreenContainer>
   );

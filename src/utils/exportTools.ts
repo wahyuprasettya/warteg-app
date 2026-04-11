@@ -9,6 +9,9 @@ import { formatIDR } from "@/utils/currency";
 
 export const exportTransactionsToExcel = async (transactions: TransactionRecord[], rangeLabel: string) => {
   try {
+    const totalOmzet = transactions.reduce((sum, t) => sum + t.total, 0);
+    const totalTransactions = transactions.length;
+
     const data = transactions.map((t, index) => ({
       No: index + 1,
       Tanggal: t.createdAt ? new Date(t.createdAt).toLocaleString("id-ID") : "-",
@@ -23,11 +26,22 @@ export const exportTransactionsToExcel = async (transactions: TransactionRecord[
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
+
+    // Add summary rows at the bottom
+    const summaryStartRow = data.length + 2;
+    XLSX.utils.sheet_add_aoa(ws, [
+      [],
+      ["RINGKASAN"],
+      ["Total Omzet", totalOmzet],
+      ["Total Transaksi", totalTransactions],
+      ["Waktu Export", new Date().toLocaleString("id-ID")]
+    ], { origin: `A${summaryStartRow}` });
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Transaksi");
 
     const wbout = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
-    const uri = FileSystem.documentDirectory + `Laporan_Transaksi_${rangeLabel}.xlsx`;
+    const uri = FileSystem.documentDirectory + `Laporan_Transaksi_${rangeLabel.replace(/\s+/g, '_')}.xlsx`;
 
     await FileSystem.writeAsStringAsync(uri, wbout, {
       encoding: FileSystem.EncodingType.Base64,

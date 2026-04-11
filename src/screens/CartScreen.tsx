@@ -40,11 +40,7 @@ export const CartScreen = ({ navigation }: Props) => {
     <ScreenContainer scroll>
       <AppHeader
         title="Keranjang"
-        subtitle={
-          profile?.businessType === "restoran"
-            ? "Tambahkan catatan pesanan lalu simpan atau lanjut pembayaran."
-            : "Atur qty dengan cepat sebelum checkout."
-        }
+        subtitle="Tambahkan catatan pesanan lalu simpan atau lanjut pembayaran."
       />
 
       {items.length === 0 ? (

@@ -12,7 +12,7 @@ export const SearchBar = ({
   placeholder = "Cari produk...",
 }: Props) => (
   <TextInput
-    className="font-poppins mb-2 rounded-2xl border border-brand/15 bg-white px-4 py-3 text-base text-brand-ink"
+    style={{ fontFamily: 'Poppins', fontSize: 16, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(193,125,60,0.15)', paddingHorizontal: 16, paddingVertical: 12, color: '#2d2d2d', marginBottom: 8 }}
     value={value}
     onChangeText={onChangeText}
     placeholder={placeholder}

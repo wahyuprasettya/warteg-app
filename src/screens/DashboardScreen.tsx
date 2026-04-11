@@ -16,13 +16,17 @@ import {
   summarizeTransactions,
   getTransactionsByRange,
   subscribeProducts,
+  archiveAndClearOrders,
+  subscribeOrders,
+  subscribeTables,
+  updateStoreOpenStatus,
 } from "@/services/firestoreService";
 import { StockReportCard } from "@/components/Report/StockReportCard";
 import {
   AppStackParamList,
-  BusinessType,
   ClosingRecord,
   ClosingReports,
+  OrderRecord,
   SalesReportSummary,
   TransactionRecord,
   Product,
@@ -30,18 +34,22 @@ import {
 import { formatIDR } from "@/utils/currency";
 import { exportTransactionsToExcel, exportTransactionsToPDF } from "@/utils/exportTools";
 import { formatLongDate, formatTime } from "@/utils/date";
+import { isTableOrder } from "@/utils/order";
 import { generateInsights } from "@/utils/insights";
+import { resolveStoreUserId } from "@/utils/store";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Dashboard">;
 
 const rangeLabels: Record<keyof typeof dateRanges, string> = {
   today: "Hari Ini",
+  week: "Minggu Ini",
   month: "Bulan Ini",
   year: "Tahun Ini",
 };
 
 const rangeIcons: Record<keyof typeof dateRanges, string> = {
   today: "📅",
+  week: "🗓️",
   month: "📆",
   year: "📊",
 };
@@ -52,44 +60,6 @@ const reportLabels: Record<keyof ClosingReports, string> = {
   year: "Tahunan",
 };
 
-const businessLabels: Record<BusinessType, string> = {
-  warung: "Warung Harian",
-  warteg: "Warteg",
-  restoran: "Restoran",
-  toko: "Toko Retail",
-};
-
-type SalesRoute = "POS" | "Warteg" | "Table";
-
-const salesEntryByBusinessType: Record<
-  BusinessType,
-  { label: string; route: SalesRoute; icon: string; hint: string }
-> = {
-  warung: {
-    label: "Buka Kasir",
-    route: "POS",
-    icon: "🧾",
-    hint: "Mulai transaksi cepat dari daftar produk.",
-  },
-  warteg: {
-    label: "Buka Warteg",
-    route: "Warteg",
-    icon: "🍽️",
-    hint: "Masuk ke mode prasmanan dan paket hemat.",
-  },
-  restoran: {
-    label: "Pilih Meja",
-    route: "Table",
-    icon: "🍴",
-    hint: "Lanjutkan pesanan berdasarkan nomor meja.",
-  },
-  toko: {
-    label: "Buka Kasir",
-    route: "POS",
-    icon: "🏪",
-    hint: "Masuk ke kasir retail dengan kategori produk.",
-  },
-};
 
 const getCashierName = (email?: string | null) => {
   if (!email) {
@@ -125,6 +95,29 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [activeOrders, setActiveOrders] = useState<OrderRecord[]>([]);
+  const [tables, setTables] = useState<string[]>([]);
+  const storeUserId = resolveStoreUserId(authUser?.uid, profile);
+
+  const [isStoreOpen, setIsStoreOpen] = useState(profile?.isStoreOpen ?? true);
+
+  useEffect(() => {
+    if (profile?.isStoreOpen !== undefined) {
+      setIsStoreOpen(profile.isStoreOpen);
+    }
+  }, [profile?.isStoreOpen]);
+
+  const handleOpenStore = async () => {
+    if (!storeUserId) return;
+    try {
+      setIsStoreOpen(true);
+      await updateStoreOpenStatus(storeUserId, true);
+      Alert.alert("Warung Dibuka", "Status warung telah diaktifkan.");
+    } catch (error) {
+      setIsStoreOpen(false);
+      Alert.alert("Gagal", "Tidak dapat membuka warung saat ini.");
+    }
+  };
 
   useEffect(() => {
     if (!authUser) {
@@ -132,7 +125,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
     }
 
     const unsubscribe = subscribeTransactionsByRange(
-      authUser.uid,
+      storeUserId,
       range,
       setTransactions,
     );
@@ -145,7 +138,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
     }
 
     const unsubscribe = subscribeTransactionsByRange(
-      authUser.uid,
+      storeUserId,
       "today",
       setTodayTransactions,
     );
@@ -157,22 +150,51 @@ export const DashboardScreen = ({ navigation }: Props) => {
       return;
     }
 
-    const unsubscribe = subscribeTodayClosing(authUser.uid, setTodayClosing);
+    const unsubscribe = subscribeTodayClosing(storeUserId, setTodayClosing);
     return unsubscribe;
   }, [authUser]);
 
   useEffect(() => {
-    if (!authUser || !profile?.businessType) {
+    if (!authUser) {
       return;
     }
 
     const unsubscribe = subscribeProducts(
-      authUser.uid,
-      profile.businessType,
+      storeUserId,
       setProducts,
     );
     return unsubscribe;
-  }, [authUser, profile?.businessType]);
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    const unsubscribe = subscribeOrders(storeUserId, (orders) => {
+      setActiveOrders(orders.filter((o) => o.status !== "done"));
+    });
+    return unsubscribe;
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    const unsubscribe = subscribeTables(storeUserId, setTables);
+    return unsubscribe;
+  }, [authUser]);
+
+  // Meja yang sedang terisi dari pesanan meja (QR)
+  const occupiedTables = useMemo(() => {
+    const tableOrders = activeOrders.filter(
+      (o) => isTableOrder(o) && o.status !== "done"
+    );
+    const tableNums = tableOrders
+      .map((o) => o.tableNumber || o.tableId)
+      .filter(Boolean) as string[];
+    return [...new Set(tableNums)].sort();
+  }, [activeOrders]);
+
+  const manualOrderCount = useMemo(
+    () => activeOrders.filter((o) => !isTableOrder(o)).length,
+    [activeOrders]
+  );
 
   const summary = useMemo(
     () => summarizeTransactions(transactions),
@@ -191,7 +213,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
     if (!authUser || !todayClosing) return;
     try {
       setIsExporting(true);
-      const data = await getTransactionsByRange(authUser.uid, reportRange === "day" ? "today" : reportRange);
+      const data = await getTransactionsByRange(storeUserId, reportRange === "day" ? "today" : reportRange);
       await exportTransactionsToPDF(data, reportLabels[reportRange]);
     } catch (error) {
     } finally {
@@ -203,7 +225,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
     if (!authUser || !todayClosing) return;
     try {
       setIsExporting(true);
-      const data = await getTransactionsByRange(authUser.uid, reportRange === "day" ? "today" : reportRange);
+      const data = await getTransactionsByRange(storeUserId, reportRange === "day" ? "today" : reportRange);
       await exportTransactionsToExcel(data, reportLabels[reportRange]);
     } catch (error) {
     } finally {
@@ -219,9 +241,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
     return "Selamat Malam";
   }, []);
 
-  const businessType = profile?.businessType ?? "warung";
-  const businessLabel = businessLabels[businessType];
-  const mainEntry = salesEntryByBusinessType[businessType];
+  const businessLabel = profile?.storeName || "Warteg";
   const cashierName = useMemo(
     () => getCashierName(profile?.email ?? authUser?.email),
     [authUser?.email, profile?.email],
@@ -229,46 +249,144 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const todayLabel = useMemo(() => formatLongDate(), []);
   const closingHour = profile?.closingHour ?? CLOSING_HOUR;
   const canCloseNow = new Date().getHours() >= closingHour;
+  const estimatedProfitMargin = profile?.estimatedProfitMarginPercent ?? 30;
+
+  const estimatedProfit = useMemo(
+    () => Math.round((summary.totalSales * estimatedProfitMargin) / 100),
+    [estimatedProfitMargin, summary.totalSales],
+  );
+
+  const busiestHourLabel = useMemo(() => {
+    if (transactions.length === 0) {
+      return "-";
+    }
+
+    const hourlyMap = transactions.reduce<Record<string, number>>((acc, transaction) => {
+      if (!transaction.createdAt) {
+        return acc;
+      }
+
+      const hour = new Date(transaction.createdAt).getHours();
+      const key = `${String(hour).padStart(2, "0")}:00`;
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(hourlyMap).sort((left, right) => right[1] - left[1])[0]?.[0] ?? "-";
+  }, [transactions]);
+
+  const cashierPerformance = useMemo(() => {
+    const grouped = transactions.reduce<
+      Record<string, { name: string; totalSales: number; transactionCount: number }>
+    >((acc, transaction) => {
+      const name =
+        transaction.cashierName ||
+        getCashierName(transaction.cashierEmail) ||
+        "Kasir";
+
+      acc[name] = acc[name] ?? { name, totalSales: 0, transactionCount: 0 };
+      acc[name].totalSales += transaction.total || 0;
+      acc[name].transactionCount += 1;
+      return acc;
+    }, {});
+
+    return Object.values(grouped).sort(
+      (left, right) => right.totalSales - left.totalSales,
+    );
+  }, [transactions]);
+
+  const topCashier = cashierPerformance[0];
 
   const actionCards = useMemo(
     () => [
       {
-        label: mainEntry.label,
-        icon: mainEntry.icon,
-        hint: mainEntry.hint,
+        label: "Daftar Pesanan",
+        icon: "🍽️",
+        hint: "Lihat order dari Meja & Order Kasir",
         accent: true,
-        onPress: () => navigation.navigate(mainEntry.route),
+        onPress: () => navigation.navigate("OrderList"),
+      },
+    ],
+    [navigation],
+  );
+
+  const ownerModules = useMemo(
+    () => [
+      {
+        label: "Laporan & Analitik",
+        icon: "📈",
+        hint: `Omzet ${rangeLabels[range].toLowerCase()}, jam ramai ${busiestHourLabel}, profit estimasi ${formatIDR(estimatedProfit)}.`,
+        onPress: () => setRange("week"),
       },
       {
-        label: "Produk",
+        label: "Kasir (Manual)",
+        icon: "🛍️",
+        hint: "Input pesanan manual langsung dari dashboard owner.",
+        onPress: () => navigation.navigate("POS"),
+      },
+      {
+        label: "Manajemen Produk",
         icon: "📦",
-        hint: "Tambah atau edit stok dan harga jual.",
-        accent: false,
+        hint: `${products.length} produk aktif siap dikelola dari dashboard owner.`,
         onPress: () => navigation.navigate("Products"),
       },
       {
-        label: "Riwayat",
-        icon: "📋",
-        hint: "Lihat transaksi yang sudah berjalan.",
-        accent: false,
+        label: "Manajemen Kasir",
+        icon: "👥",
+        hint: topCashier
+          ? `${cashierPerformance.length} kasir terdaftar, performa tertinggi ${topCashier.name}.`
+          : "Buat akun kasir baru dan pantau performanya dari sini.",
+        onPress: () => navigation.navigate("CashierManagement"),
+      },
+      {
+        label: "Kontrol Transaksi",
+        icon: "🧾",
+        hint: "Monitor transaksi, audit, refund, dan void owner.",
         onPress: () => navigation.navigate("Transactions"),
       },
       {
-        label: "Pengaturan Toko",
-        icon: "⚙️",
-        hint: "Atur jam operasional dan diskon promo.",
-        accent: false,
+        label: "Manajemen Meja",
+        icon: "🪑",
+        hint: `Kelola ${tables.length} meja restoran, atur penomoran, dan pantau status terisi.`,
         onPress: () => navigation.navigate("Settings"),
+      },
+      {
+        label: "Promo & Diskon",
+        icon: "🏷️",
+        hint: `${profile?.promos?.length ?? 0} promo aktif siap dipakai kasir.`,
+        onPress: () => navigation.navigate("Settings"),
+      },
+      {
+        label: "Pengaturan Restoran",
+        icon: "⚙️",
+        hint: `Cek jam closing, pajak toko, dan profil outlet.`,
+        onPress: () => navigation.navigate("Settings"),
+      },
+      {
+        label: "Keamanan & Akses",
+        icon: "🔐",
+        hint: `${transactions.filter((transaction) => transaction.auditedAt).length} transaksi sedang ditandai audit.`,
+        onPress: () => navigation.navigate("Transactions"),
       },
       {
         label: "Logout",
         icon: "🚪",
         hint: "Keluar dari akun sekarang.",
-        accent: false,
         onPress: signOutUser,
       },
     ],
-    [mainEntry, navigation, signOutUser],
+    [
+      busiestHourLabel,
+      cashierPerformance.length,
+      estimatedProfit,
+      navigation,
+      products.length,
+      profile?.promos?.length,
+      range,
+      topCashier,
+      signOutUser,
+      transactions,
+    ],
   );
 
   const visibleInsights =
@@ -281,7 +399,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const reportSummary = todayClosing?.reports?.[reportRange] ?? emptySummary;
 
   const handleCloseDay = () => {
-    if (!authUser || !profile?.businessType) {
+    if (!authUser) {
       return;
     }
 
@@ -311,16 +429,39 @@ export const DashboardScreen = ({ navigation }: Props) => {
           onPress: async () => {
             try {
               setIsClosing(true);
+
+              // Tutup warung saat closing hari
+              await updateStoreOpenStatus(storeUserId, false);
+              setIsStoreOpen(false);
+
+              // 1. Move active orders to transactions and clear them
+              await archiveAndClearOrders(storeUserId);
+
+              // 2. Calculate summary again after archiving to include the newly moved orders
+              const todayTransactions = await getTransactionsByRange(storeUserId, "today");
+              const currentSummary = summarizeTransactions(todayTransactions);
+
               await closeTodaySales({
-                userId: authUser.uid,
-                businessType: profile?.businessType || "warung",
+                userId: storeUserId,
                 cashierName,
                 cashierEmail: profile?.email || "",
-                summary: todaySummary,
+                summary: currentSummary,
               });
+
               Alert.alert(
-                "Closing berhasil",
-                "Penjualan hari ini sudah ditutup dan siap dibuatkan laporan.",
+                "Closing Berhasil",
+                "Penjualan hari ini sudah ditutup. Apakah Anda ingin mengunduh laporan sekarang?",
+                [
+                  { text: "Nanti Saja", style: "cancel" },
+                  { 
+                    text: "📄 PDF", 
+                    onPress: () => handleExportPDF() 
+                  },
+                  { 
+                    text: "📊 Excel", 
+                    onPress: () => handleExportExcel() 
+                  }
+                ]
               );
             } catch (error) {
               Alert.alert("Closing gagal", "Coba ulangi beberapa saat lagi.");
@@ -348,7 +489,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
 
     try {
       setIsGeneratingReport(true);
-      await generateAndSaveClosingReports(authUser.uid);
+      await generateAndSaveClosingReports(storeUserId);
       Alert.alert(
         "Laporan siap",
         "Laporan harian, bulanan, dan tahunan berhasil dibuat.",
@@ -379,7 +520,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
               Dashboard
             </Text>
             <Text className="font-poppins mt-2 text-sm leading-5 text-white/80">
-              {businessLabel} • kasir {cashierName} • {todayLabel}
+              {businessLabel} • owner view • {todayLabel}
             </Text>
           </View>
           <View className="h-14 w-14 items-center justify-center rounded-[20px] bg-white/15">
@@ -390,7 +531,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
         <View className="mt-4 flex-row flex-wrap">
           <View className="mr-2 mb-2 rounded-full bg-white/12 px-3 py-2">
             <Text className="text-xs font-poppins-semibold text-white">
-              Kasir: {cashierName}
+              Owner: {cashierName}
             </Text>
           </View>
           <View className="mr-2 mb-2 rounded-full bg-white/12 px-3 py-2">
@@ -406,6 +547,30 @@ export const DashboardScreen = ({ navigation }: Props) => {
             </Text>
           </View>
         </View>
+
+        {!isStoreOpen && (
+          <View className="mt-2 rounded-[22px] bg-red-500/20 p-4 border border-red-500/30 flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-sm font-poppins-bold text-white">Status: TUTUP</Text>
+              <Text className="text-xs font-poppins text-white/80 mt-1">Pembuatan pesanan baru ditahan.</Text>
+            </View>
+            <Pressable 
+              onPress={handleOpenStore}
+              className="bg-white px-4 py-2.5 rounded-full"
+            >
+              <Text className="text-xs font-poppins-bold text-brand">Buka Warung</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {isStoreOpen && (
+          <View className="mt-2 rounded-[22px] bg-emerald-500/20 p-4 border border-emerald-500/30 flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-sm font-poppins-bold text-white">Status: BUKA</Text>
+              <Text className="text-xs font-poppins text-white/80 mt-1">Siap menerima pesanan baru.</Text>
+            </View>
+          </View>
+        )}
 
         <View className="mt-3 rounded-[26px] bg-white/12 p-4">
           <View className="flex-row items-start justify-between">
@@ -489,6 +654,110 @@ export const DashboardScreen = ({ navigation }: Props) => {
           value={String(summary.itemSold)}
           icon="🛍️"
         />
+      </View>
+
+      <View className="mb-4 flex-row">
+        <StatCard
+          label="Profit Est."
+          value={formatIDR(estimatedProfit)}
+          icon="💹"
+        />
+        <StatCard
+          label="Jam Ramai"
+          value={busiestHourLabel}
+          icon="⏰"
+        />
+      </View>
+
+      <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
+        <View className="mb-3 flex-row items-center">
+          <View className="mr-3 h-11 w-11 items-center justify-center rounded-[18px] bg-brand-soft/60">
+            <Text className="font-poppins text-lg">👑</Text>
+          </View>
+          <View className="flex-1">
+            <Text className="text-lg font-poppins-bold text-brand-ink">
+              Pusat Fungsi Owner
+            </Text>
+            <Text className="font-poppins text-xs text-brand-muted">
+              Semua area utama owner dipetakan di satu dashboard.
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row flex-wrap justify-between">
+          {ownerModules.map((module) => (
+            <Pressable
+              key={module.label}
+              className="mb-4 rounded-[24px] border border-brand/5 bg-brand-soft/15 p-4"
+              style={{ width: "48%" }}
+              onPress={module.onPress}
+            >
+              <View className="mb-3 h-11 w-11 items-center justify-center rounded-full bg-white">
+                <Text className="font-poppins text-xl">{module.icon}</Text>
+              </View>
+              <Text className="text-sm font-poppins-bold text-brand-ink">
+                {module.label}
+              </Text>
+              <Text className="mt-1 font-poppins text-xs leading-5 text-brand-muted">
+                {module.hint}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* ── Live Order Status ── */}
+      <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
+        <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted mb-3">
+          Status Pesanan Aktif
+        </Text>
+        <View className="flex-row">
+          <View className="flex-1 mr-3 rounded-[20px] bg-brand-soft/50 p-4">
+            <Text className="text-3xl font-poppins-bold text-brand">
+              {activeOrders.length}
+            </Text>
+            <Text className="text-xs font-poppins-semibold text-brand-muted mt-1">
+              Total Pesanan Aktif
+            </Text>
+          </View>
+          <View className="flex-1 rounded-[20px] bg-amber-50 p-4">
+            <Text className="text-3xl font-poppins-bold text-amber-600">
+              {occupiedTables.length}
+            </Text>
+            <Text className="text-xs font-poppins-semibold text-amber-500 mt-1">
+              Meja Terisi (Pesan Meja)
+            </Text>
+          </View>
+        </View>
+
+        {occupiedTables.length > 0 && (
+          <View className="mt-3">
+            <Text className="text-xs font-poppins-semibold text-brand-muted mb-2">
+              Meja yang sedang dipesan:
+            </Text>
+            <View className="flex-row flex-wrap">
+              {occupiedTables.map((table) => (
+                <View
+                  key={table}
+                  className="mr-2 mb-2 rounded-full bg-amber-100 px-3 py-1"
+                >
+                  <Text className="text-xs font-poppins-bold text-amber-700">
+                    Meja {table}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {manualOrderCount > 0 && (
+          <View className="mt-2 rounded-[16px] bg-brand-soft/30 px-4 py-3">
+            <Text className="text-xs font-poppins text-brand-muted">
+              <Text className="font-poppins-bold text-brand">{manualOrderCount}</Text>{" "}
+              pesanan app/kasir sedang aktif
+            </Text>
+          </View>
+        )}
       </View>
 
       <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
@@ -685,19 +954,21 @@ export const DashboardScreen = ({ navigation }: Props) => {
             </View>
           </View>
 
-          <View className="mb-4 flex-row justify-between">
+          <View className="mb-4 flex-row">
             <AppButton
-              label={isExporting ? "Memproses..." : "📄 Export PDF"}
+              label={isExporting ? "Proses..." : "📄 PDF"}
               onPress={handleExportPDF}
               variant="secondary"
               loading={isExporting}
+              className="flex-1"
             />
-            <View className="w-2" />
+            <View className="w-3" />
             <AppButton
-              label={isExporting ? "Memproses..." : "📊 Export Excel"}
+              label={isExporting ? "Proses..." : "📊 Excel"}
               onPress={handleExportExcel}
               variant="secondary"
               loading={isExporting}
+              className="flex-1"
             />
           </View>
 
@@ -753,29 +1024,31 @@ export const DashboardScreen = ({ navigation }: Props) => {
             </View>
           </Pressable>
 
-          <View className="flex-row flex-wrap justify-between">
-            {actionCards.slice(1).map((action) => (
-              <Pressable
-                key={action.label}
-                className="mb-4 items-center rounded-[24px] border border-brand/5 bg-white p-5 shadow-sm active:opacity-80"
-                style={{ width: "48%" }}
-                onPress={action.onPress}
-              >
-                <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-brand-soft/60">
-                  <Text className="font-poppins text-2xl">{action.icon}</Text>
-                </View>
-                <Text className="text-center text-sm font-poppins-bold text-brand-ink">
-                  {action.label}
-                </Text>
-                <Text
-                  className="font-poppins mt-1 text-center text-xs leading-4 text-brand-muted"
-                  numberOfLines={2}
+          {actionCards.length > 1 ? (
+            <View className="flex-row flex-wrap justify-between">
+              {actionCards.slice(1).map((action) => (
+                <Pressable
+                  key={action.label}
+                  className="mb-4 items-center rounded-[24px] border border-brand/5 bg-white p-5 shadow-sm active:opacity-80"
+                  style={{ width: "48%" }}
+                  onPress={action.onPress}
                 >
-                  {action.hint}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+                  <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-brand-soft/60">
+                    <Text className="font-poppins text-2xl">{action.icon}</Text>
+                  </View>
+                  <Text className="text-center text-sm font-poppins-bold text-brand-ink">
+                    {action.label}
+                  </Text>
+                  <Text
+                    className="font-poppins mt-1 text-center text-xs leading-4 text-brand-muted"
+                    numberOfLines={2}
+                  >
+                    {action.hint}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -809,6 +1082,20 @@ export const DashboardScreen = ({ navigation }: Props) => {
             </Text>
           </View>
         ))}
+
+        <View className="mt-3 rounded-[22px] bg-brand-soft/20 p-4">
+          <Text className="text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
+            Ringkasan Owner
+          </Text>
+          <Text className="mt-2 text-sm font-poppins-bold text-brand-ink">
+            {topCashier
+              ? `${topCashier.name} memimpin omzet ${formatIDR(topCashier.totalSales)}.`
+              : "Belum ada performa kasir yang bisa dibandingkan."}
+          </Text>
+          <Text className="mt-1 font-poppins text-sm leading-5 text-brand-muted">
+            Jam ramai saat ini berada di sekitar {busiestHourLabel} dengan estimasi profit {formatIDR(estimatedProfit)} pada rentang {rangeLabels[range].toLowerCase()}.
+          </Text>
+        </View>
       </View>
 
       <View className="items-center pb-4 opacity-40">

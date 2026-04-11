@@ -13,6 +13,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
   const { register, isLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"owner" | "kasir">("owner");
 
   const handleRegister = async () => {
     if (password.length < 6) {
@@ -21,7 +22,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
     }
 
     try {
-      await register(email, password);
+      await register(email, password, role);
     } catch (error: any) {
       console.error("Registration Error:", error);
 
@@ -92,6 +93,30 @@ export const RegisterScreen = ({ navigation }: Props) => {
               placeholderTextColor="#8B7E74"
             />
           </View>
+
+          <View className="mt-4">
+            <Text className="mb-2 ml-1 text-sm font-poppins-semibold text-brand-ink">
+              Mendaftar Sebagai
+            </Text>
+            <View className="flex-row rounded-2xl bg-brand-soft/20 border border-brand/5 p-1">
+              <Pressable 
+                className={`flex-1 rounded-xl py-3 items-center ${role === "owner" ? "bg-brand shadow-sm" : ""}`}
+                onPress={() => setRole("owner")}
+              >
+                <Text className={`font-poppins-semibold text-sm ${role === "owner" ? "text-white" : "text-brand-muted"}`}>
+                  Owner
+                </Text>
+              </Pressable>
+              <Pressable 
+                className={`flex-1 rounded-xl py-3 items-center ${role === "kasir" ? "bg-brand shadow-sm" : ""}`}
+                onPress={() => setRole("kasir")}
+              >
+                <Text className={`font-poppins-semibold text-sm ${role === "kasir" ? "text-white" : "text-brand-muted"}`}>
+                  Kasir
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
 
         <View className="mt-10">
@@ -114,11 +139,6 @@ export const RegisterScreen = ({ navigation }: Props) => {
         </View>
       </View>
 
-      <View className="mt-10 p-5 rounded-3xl bg-brand-soft/20 mx-4 border border-brand/5">
-        <Text className="font-poppins text-sm italic text-center text-brand-muted">
-          "Pilihan jenis usaha dapat ditentukan setelah registrasi selesai."
-        </Text>
-      </View>
     </ScreenContainer>
   );
 };

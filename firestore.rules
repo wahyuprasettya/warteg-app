@@ -2,42 +2,82 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
+    // Helper to get current user's profile data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function resourceOwner() {
-      return signedIn() && resource.data.userId == request.auth.uid;
+    // Helper to check if the user is authorized for a specific owner's data
+    function isStaffOf(ownerId) {
+      return signedIn() && (
+        request.auth.uid == ownerId || 
+        (getUserData().get('ownerId', '') == ownerId)
+      );
     }
 
-    function requestOwner() {
-      return signedIn() && request.resource.data.userId == request.auth.uid;
+    // ==========================================
+    // 🍔 QR MENU (Sisi Pelanggan - Public)
+    // ==========================================
+
+    match /menu/{menuId} {
+      allow read: if true;
+      allow write: if signedIn();
     }
+
+    match /config/{configId} {
+      allow read, write: if signedIn();
+    }
+
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read, update, delete: if signedIn();
+    }
+
+    // ==========================================
+    // 📱 POS ADMIN (Sisi Pemilik - Authenticated)
+    // ==========================================
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      function ownsCashierDoc() {
+        return signedIn() && resource.data.get('ownerId', '') == request.auth.uid;
+      }
+
+      allow create, delete: if signedIn() && (
+        request.auth.uid == userId || ownsCashierDoc()
+      );
+
+      allow read: if isStaffOf(userId) || ownsCashierDoc();
+
+      allow update: if signedIn() && (
+        request.auth.uid == userId || 
+        ownsCashierDoc() ||
+        (getUserData().get('ownerId', '') == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isStoreOpen', 'updatedAt']))
+      );
+
+      match /settings/{document=**} {
+        allow read: if isStaffOf(userId);
+        allow write: if signedIn() && request.auth.uid == userId;
+      }
     }
 
-    match /products/{productId} {
-      allow read: if resourceOwner();
-      allow create: if requestOwner();
-      allow update, delete: if resourceOwner();
+    // --- TABLES (STATUS MEJA/BOOKING) ---
+    match /tables/{tableDocId} {
+      // ID dokumen format: [ownerId]-[tableId]
+      allow write: if isStaffOf(tableDocId.split("-")[0]);
+      allow read: if true;
     }
 
     match /transactions/{transactionId} {
-      allow read: if resourceOwner();
-      allow create: if requestOwner();
-      allow update, delete: if resourceOwner();
+      allow read, write: if signedIn();
     }
 
     match /closings/{closingId} {
-      allow read: if resourceOwner();
-      allow create: if requestOwner();
-      allow update, delete: if resourceOwner();
+      allow read, write: if signedIn();
     }
   }
 }

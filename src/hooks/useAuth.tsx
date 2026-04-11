@@ -13,7 +13,6 @@ import {
   createUserProfile,
   getUserProfile,
   seedDummyProducts,
-  updateBusinessType,
 } from "@/services/firestoreService";
 import {
   loginWithEmail,
@@ -21,17 +20,16 @@ import {
   registerWithEmail,
   subscribeAuth,
 } from "@/services/authService";
-import { BusinessType, UserProfile } from "@/types";
+import { UserProfile } from "@/types";
 
 interface AuthContextValue {
   authUser: User | null;
   profile: UserProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, role?: "owner" | "kasir") => Promise<void>;
   signOutUser: () => Promise<void>;
-  saveBusinessType: (businessType: BusinessType) => Promise<void>;
-  refreshProfile: (userId?: string) => Promise<void>;
+  refreshProfile: (userId?: string) => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -41,15 +39,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshProfile = async (userId?: string) => {
+  const refreshProfile = async (userId?: string): Promise<UserProfile | null> => {
     const resolvedUserId = userId ?? authUser?.uid;
     if (!resolvedUserId) {
       setProfile(null);
-      return;
+      return null;
     }
 
     const nextProfile = await getUserProfile(resolvedUserId);
     setProfile(nextProfile);
+    return nextProfile;
   };
 
   useEffect(() => {
@@ -68,14 +67,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       await createUserProfile(user.uid, user.email ?? "");
-      await refreshProfile(user.uid);
+      const nextProfile = await refreshProfile(user.uid);
+      if (nextProfile?.role === "kasir" && nextProfile.isActive === false) {
+        await logout();
+        setProfile(null);
+        setAuthUser(null);
+      }
       setIsLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
-  const value = useMemo<AuthContextValue>(
+  const value = useMemo(
     () => ({
       authUser,
       profile,
@@ -92,7 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsLoading(false);
         }
       },
-      register: async (email, password) => {
+      register: async (email, password, role = "owner") => {
         if (!isFirebaseConfigured) {
           throw new Error("Firebase belum dikonfigurasi.");
         }
@@ -103,6 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await createUserProfile(
             credential.user.uid,
             credential.user.email ?? email,
+            role,
           );
         } finally {
           setIsLoading(false);
@@ -110,15 +115,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
       signOutUser: async () => {
         await logout();
-      },
-      saveBusinessType: async (businessType) => {
-        if (!authUser) {
-          return;
-        }
-
-        await updateBusinessType(authUser.uid, businessType);
-        await seedDummyProducts(authUser.uid, businessType);
-        await refreshProfile(authUser.uid);
       },
       refreshProfile,
     }),

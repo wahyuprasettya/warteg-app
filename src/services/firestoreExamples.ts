@@ -5,7 +5,6 @@ import { db } from "@/firebase/config";
 export const addProductExample = async (userId: string) => {
   return addDoc(collection(db, "products"), {
     userId,
-    businessType: "warteg",
     name: "Nasi putih",
     price: 6000,
     category: "Nasi",

@@ -36,6 +36,24 @@ cp .env.example .env
 npm run start
 ```
 
+Kalau mode `LAN` sulit tersambung ke Expo Go, pakai:
+
+```bash
+npm run start:lan
+```
+
+Kalau tetap gagal, coba:
+
+```bash
+npm run start:tunnel
+```
+
+Kalau bundle lama masih nyangkut, bersihkan cache dulu:
+
+```bash
+npm run start:clear
+```
+
 5. Untuk perangkat:
 
 ```bash
@@ -102,4 +120,14 @@ transactions/{transactionId}
 - `src/firebase/config.ts` berisi contoh config Firebase
 - `src/services/firestoreExamples.ts` berisi contoh query `get/add/update`
 - `src/data/dummy.ts` berisi dummy data Warteg dan Warung
+
+## Troubleshooting Expo Go
+
+Kalau `LAN` tidak bisa dibuka di Expo Go tetapi `tunnel` bisa, biasanya masalahnya ada di jaringan lokal, bukan di kode. Coba:
+
+1. Pastikan HP dan laptop benar-benar satu Wi-Fi
+2. Matikan VPN di HP dan laptop
+3. Izinkan Node/Expo di firewall
+4. Restart Expo dengan cache bersih
+5. Pakai `tunnel` kalau sedang pindah-pindah jaringan
 # warteg-app

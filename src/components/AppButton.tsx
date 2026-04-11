@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Pressable, Text, View, ViewStyle } from "react-native";
 
 interface Props {
   label: string;
@@ -6,6 +6,8 @@ interface Props {
   variant?: "primary" | "secondary" | "ghost" | "danger";
   disabled?: boolean;
   loading?: boolean;
+  className?: string;
+  style?: ViewStyle;
 }
 
 export const AppButton = ({
@@ -14,29 +16,53 @@ export const AppButton = ({
   variant = "primary",
   disabled = false,
   loading = false,
+  className,
+  style,
 }: Props) => {
-  const styles = {
-    primary: "bg-brand px-4 py-4",
-    secondary: "bg-brand-accent px-4 py-4",
-    ghost: "bg-white px-4 py-4 border border-brand/20",
-    danger: "bg-red-700 px-4 py-4",
+  const variantColors: Record<string, string> = {
+    primary: "#A63D40",
+    secondary: "#E9B824",
+    ghost: "#FFFFFF",
+    danger: "#DC2626",
   };
+
+  const bgColor = variantColors[variant] || variantColors.primary;
+  const textColor = variant === "ghost" ? "#1F2937" : "#FFFFFF";
 
   return (
     <Pressable
-      className={`items-center rounded-2xl ${styles[variant]} ${disabled ? "opacity-50" : ""}`}
+      className={className}
+      style={[{ height: 56, width: "100%" }, style]}
       disabled={disabled || loading}
       onPress={onPress}
     >
-      {loading ? (
-        <ActivityIndicator color="#ffffff" />
-      ) : (
-        <Text
-          className={`text-base font-poppins-bold ${variant === "ghost" ? "text-brand-ink" : "text-white"}`}
+      {({ pressed }) => (
+        <View
+          style={{
+            backgroundColor: bgColor,
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 16,
+            opacity: disabled ? 0.4 : (pressed ? 0.8 : 1),
+            borderWidth: variant === "ghost" ? 1 : 0,
+            borderColor: "rgba(166,61,64,0.15)",
+          }}
         >
-          {label}
-        </Text>
+          {loading ? (
+            <ActivityIndicator color={textColor} />
+          ) : (
+            <Text
+              style={{ fontFamily: 'Poppins-Bold', fontSize: 16, color: textColor }}
+            >
+              {label}
+            </Text>
+          )}
+        </View>
       )}
     </Pressable>
   );
 };
+
+
+

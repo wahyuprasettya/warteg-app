@@ -16,15 +16,17 @@ import {
   subscribeProducts,
 } from "@/services/firestoreService";
 import { AppStackParamList, Product } from "@/types";
+import { resolveStoreUserId } from "@/utils/store";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Warteg">;
 
 export const WartegScreen = ({ navigation }: Props) => {
-  const { authUser } = useAuth();
+  const { authUser, profile } = useAuth();
   const { addToCart, items, total, updateQty } = useCart();
   const { width } = useWindowDimensions();
   const [products, setProducts] = useState<Product[]>(dummyWartegProducts);
   const [category, setCategory] = useState("Semua");
+  const storeUserId = resolveStoreUserId(authUser?.uid, profile);
 
   const categoryIcons: Record<string, string> = {
     Semua: "🌈",
@@ -36,14 +38,14 @@ export const WartegScreen = ({ navigation }: Props) => {
   };
 
   useEffect(() => {
-    if (!authUser) {
+    if (!authUser || !storeUserId) {
       return;
     }
 
-    seedDummyProducts(authUser.uid, "warteg").catch(() => null);
-    const unsubscribe = subscribeProducts(authUser.uid, "warteg", setProducts);
+    seedDummyProducts(storeUserId).catch(() => null);
+    const unsubscribe = subscribeProducts(storeUserId, setProducts);
     return unsubscribe;
-  }, [authUser]);
+  }, [authUser, storeUserId]);
 
   const combos = useMemo(
     () => products.filter((item) => item.category === "Paket"),
@@ -94,13 +96,6 @@ export const WartegScreen = ({ navigation }: Props) => {
             label="Dashboard"
             onPress={() => navigation.navigate("Dashboard")}
             variant="secondary"
-          />
-        </View>
-        <View className="flex-1">
-          <AppButton
-            label="Produk"
-            onPress={() => navigation.navigate("Products")}
-            variant="ghost"
           />
         </View>
       </View>

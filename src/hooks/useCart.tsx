@@ -7,6 +7,7 @@ interface CartContextValue {
   note: string;
   customerName: string;
   activeTable?: string;
+  activeOrderId?: string;
   subtotal: number;
   manualDiscount: number;
   promoDiscount: number;
@@ -23,6 +24,7 @@ interface CartContextValue {
   setManualDiscount: (amount: number) => void;
   applyPromo: (promo: PromoDefinition) => { ok: boolean; message?: string };
   clearPromo: () => void;
+  loadOrder: (order: any) => void;
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
@@ -32,6 +34,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [note, setNote] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [activeTable, setActiveTable] = useState<string | undefined>();
+  const [activeOrderId, setActiveOrderId] = useState<string | undefined>();
   const [manualDiscount, setManualDiscountState] = useState(0);
   const [activePromo, setActivePromo] = useState<PromoDefinition | null>(null);
 
@@ -79,6 +82,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setActiveTable(undefined);
     setManualDiscountState(0);
     setActivePromo(null);
+    setActiveOrderId(undefined);
   };
 
   const subtotal = useMemo(
@@ -143,12 +147,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setActivePromo(null);
   };
 
-  const value = useMemo<CartContextValue>(
+  const loadOrder = (order: any) => {
+    setItems(order.items || []);
+    setNote(order.notes || "");
+    setCustomerName(order.customerName || "");
+    setActiveTable(order.tableNumber || order.tableId);
+    setManualDiscountState(order.discountAmount || 0);
+    setActiveOrderId(order.id);
+  };
+
+  const value = useMemo(
     () => ({
       items,
       note,
       customerName,
       activeTable,
+      activeOrderId,
       subtotal,
       manualDiscount: normalizedManualDiscount,
       promoDiscount,
@@ -165,10 +179,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       setManualDiscount,
       applyPromo,
       clearPromo,
+      loadOrder,
     }),
     [
       activePromo,
       activeTable,
+      activeOrderId,
       discountAmount,
       items,
       note,
@@ -177,6 +193,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       promoDiscount,
       subtotal,
       total,
+      loadOrder,
     ],
   );
 

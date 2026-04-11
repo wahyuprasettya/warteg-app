@@ -28,23 +28,23 @@ export const ProductCard = memo(
           />
         ) : (
           <View className="h-full w-full items-center justify-center">
-            <Text className="font-poppins text-3xl text-brand-soft">🥘</Text>
+            <Text style={{ fontFamily: 'Poppins-Bold', fontSize: 24, color: '#c17d3c' }}>🥘</Text>
           </View>
         )}
       </View>
       <View className="p-3.5">
         <Text
-          className="text-base font-poppins-bold text-brand-ink"
+          style={{ fontFamily: 'Poppins-Bold', fontSize: 16, color: '#2d2d2d' }}
           numberOfLines={1}
         >
           {product.name}
         </Text>
-        <Text className="text-xs font-poppins-semibold text-brand-muted">
+        <Text style={{ fontFamily: 'Poppins', fontSize: 12, color: '#888' }}>
           {product.category}
         </Text>
 
         <View className="mt-3">
-          <Text className="text-lg font-poppins-bold text-brand">
+          <Text style={{ fontFamily: 'Poppins-Bold', fontSize: 18, color: '#c17d3c' }}>
             {formatIDR(product.price)}
           </Text>
           <View className="mt-2 flex-row items-center justify-between">
@@ -69,12 +69,12 @@ export const ProductCard = memo(
                 }}
               >
                 <Text
-                  className={`text-lg font-poppins-bold ${quantity > 0 ? "text-brand-ink" : "text-brand-muted"}`}
+                  style={{ fontFamily: 'Poppins-Bold', fontSize: 18, color: quantity > 0 ? '#2d2d2d' : '#888' }}
                 >
                   -
                 </Text>
               </Pressable>
-              <Text className="min-w-[24px] px-2 text-center text-sm font-poppins-bold text-brand-ink">
+              <Text style={{ fontFamily: 'Poppins-Bold', minWidth: 24, textAlign: 'center', fontSize: 14, color: '#2d2d2d' }}>
                 {quantity}
               </Text>
               <Pressable
@@ -85,7 +85,7 @@ export const ProductCard = memo(
                   onIncrease(product);
                 }}
               >
-                <Text className="text-lg font-poppins-bold text-white">+</Text>
+                <Text style={{ fontFamily: 'Poppins-Bold', fontSize: 18, color: '#fff' }}>+</Text>
               </Pressable>
             </View>
           </View>

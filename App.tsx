@@ -1,20 +1,13 @@
 import { StatusBar } from "expo-status-bar";
-import { Text, TextInput } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { NavigationContainer } from "@react-navigation/native";
 
 import "./global.css";
-import { AppNavigator } from "./src/navigation/AppNavigator";
 import { AuthProvider } from "./src/hooks/useAuth";
 import { CartProvider } from "./src/hooks/useCart";
+import { AppNavigator } from "./src/navigation/AppNavigator";
 import { useFonts } from "./src/lib/expoFont";
-
-const defaultTextStyle = { fontFamily: "Poppins-Regular" } as const;
-
-Text.defaultProps = Text.defaultProps ?? {};
-Text.defaultProps.style = [defaultTextStyle, Text.defaultProps.style];
-
-TextInput.defaultProps = TextInput.defaultProps ?? {};
-TextInput.defaultProps.style = [defaultTextStyle, TextInput.defaultProps.style];
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -24,18 +17,20 @@ export default function App() {
     "Poppins-Bold": require("./assets/fonts/Poppins-Bold.ttf"),
   });
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <CartProvider>
-          <StatusBar style="dark" />
-          <AppNavigator />
-        </CartProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <CartProvider>
+            <NavigationContainer>
+              <StatusBar style="dark" />
+              <AppNavigator />
+            </NavigationContainer>
+          </CartProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

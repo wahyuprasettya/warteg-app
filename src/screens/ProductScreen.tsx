@@ -1,6 +1,14 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { AppHeader } from "@/components/AppHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -8,37 +16,40 @@ import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/hooks/useAuth";
 import {
   archiveProduct,
-  seedDummyProducts,
   subscribeProducts,
 } from "@/services/firestoreService";
 import { AppStackParamList, Product } from "@/types";
 import { formatIDR } from "@/utils/currency";
+import { resolveStoreUserId } from "@/utils/store";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Products">;
 
 export const ProductScreen = ({ navigation }: Props) => {
   const { authUser, profile } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const { width } = useWindowDimensions();
+  const isCashier = profile?.role === "kasir";
+  const lowStockThreshold = profile?.lowStockAlertThreshold ?? 5;
+  const storeUserId = resolveStoreUserId(authUser?.uid, profile);
+  const isWideLayout = width >= 768;
 
   useEffect(() => {
-    if (!authUser || !profile?.businessType) {
-      return;
-    }
+    if (!authUser || !storeUserId) return;
 
-    seedDummyProducts(authUser.uid, profile.businessType).catch(() => null);
+    // Load all products from the 'menu' collection in Firebase
     const unsubscribe = subscribeProducts(
-      authUser.uid,
-      profile.businessType,
+      storeUserId,
       setProducts,
     );
     return unsubscribe;
-  }, [authUser, profile?.businessType]);
+  }, [authUser, storeUserId]);
 
   const summary = useMemo(() => {
     const categoryCount = new Set(products.map((product) => product.category))
       .size;
     const lowStockCount = products.filter(
-      (product) => typeof product.stock === "number" && product.stock <= 5,
+      (product) =>
+        typeof product.stock === "number" && product.stock <= lowStockThreshold,
     ).length;
     const estimatedValue = products.reduce(
       (total, product) =>
@@ -52,7 +63,7 @@ export const ProductScreen = ({ navigation }: Props) => {
       lowStockCount,
       estimatedValue,
     };
-  }, [products]);
+  }, [lowStockThreshold, products]);
 
   const handleDelete = async (productId: string) => {
     try {
@@ -65,10 +76,14 @@ export const ProductScreen = ({ navigation }: Props) => {
   return (
     <ScreenContainer>
       <AppHeader
-        title="Manajemen Produk"
-        subtitle="Pantau katalog aktif, stok, dan nilai jual dalam satu tempat."
-        actionLabel="Tambah"
-        actionIcon="✦"
+        title={isCashier ? "Daftar Produk" : "Manajemen Produk"}
+        subtitle={
+          isCashier
+            ? "Kasir bisa melihat daftar produk, mengecek harga, dan menambahkan produk cepat bila diperlukan."
+            : "Pantau katalog aktif, stok, dan nilai jual dalam satu tempat."
+        }
+        actionLabel={isCashier ? "Quick Add" : "Tambah"}
+        actionIcon={isCashier ? "⚡" : "✦"}
         onActionPress={() => navigation.navigate("AddProduct")}
       />
 
@@ -85,8 +100,12 @@ export const ProductScreen = ({ navigation }: Props) => {
           </Text>
           <Text className="font-poppins mt-2 text-sm leading-5 text-white/80">
             {products.length === 0
-              ? "Belum ada produk aktif. Tambahkan produk pertama untuk mulai mengelola katalog."
-              : `${summary.categoryCount} kategori aktif dengan tampilan yang siap dikelola lebih cepat.`}
+              ? isCashier
+                ? "Belum ada produk aktif. Gunakan quick add bila perlu menambahkan menu cepat dari kasir."
+                : "Belum ada produk aktif. Tambahkan produk pertama untuk mulai mengelola katalog."
+              : isCashier
+                ? `${summary.categoryCount} kategori siap dicek harganya langsung dari daftar produk.`
+                : `${summary.categoryCount} kategori aktif dengan tampilan yang siap dikelola lebih cepat.`}
           </Text>
 
           <View className="mt-4 flex-row">
@@ -134,95 +153,144 @@ export const ProductScreen = ({ navigation }: Props) => {
         {products.length === 0 ? (
           <EmptyState
             title="Belum ada produk"
-            description="Tambahkan produk pertama untuk mulai berjualan."
+            description={
+              isCashier
+                ? "Belum ada produk aktif. Gunakan quick add bila perlu menambahkan menu dari kasir."
+                : "Tambahkan produk pertama untuk mulai berjualan."
+            }
           />
         ) : (
           <View className="pb-4">
             {products.map((product, index) => {
               const isLowStock =
-                typeof product.stock === "number" && product.stock <= 5;
+                typeof product.stock === "number" &&
+                product.stock <= lowStockThreshold;
 
               return (
                 <View
                   key={product.id}
-                  className="mb-3 overflow-hidden rounded-[30px] border border-brand/5 bg-white p-4 shadow-sm"
+                  className="mb-3 overflow-hidden rounded-[30px] border border-brand/5 bg-white shadow-sm"
                 >
-                  <View className="flex-row items-start justify-between">
-                    <View className="mr-3 flex-1">
-                      <View className="mb-2 flex-row items-center">
-                        <View className="mr-2 rounded-full bg-brand-soft px-2.5 py-1">
-                          <Text className="text-[10px] font-poppins-semibold uppercase tracking-wide text-brand">
-                            #{index + 1}
-                          </Text>
+                  <View className={`p-4 ${isWideLayout ? "p-5" : ""}`}>
+                    <View className={`${isWideLayout ? "flex-row items-start" : ""}`}>
+                      <View className={`flex-1 ${isWideLayout ? "mr-4" : ""}`}>
+                        <View className="mb-3 flex-row flex-wrap items-center">
+                          <View className="mr-2 mb-2 rounded-full bg-brand-soft px-2.5 py-1">
+                            <Text className="text-[10px] font-poppins-semibold uppercase tracking-wide text-brand">
+                              #{index + 1}
+                            </Text>
+                          </View>
+                          <View className="mr-2 mb-2 rounded-full bg-brand-soft/70 px-2.5 py-1">
+                            <Text className="text-[10px] font-poppins-semibold text-brand-muted">
+                              {product.category}
+                            </Text>
+                          </View>
+                          <View
+                            className={`mb-2 rounded-full px-2.5 py-1 ${
+                              product.isActive ? "bg-emerald-50" : "bg-slate-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-[10px] font-poppins-semibold ${
+                                product.isActive ? "text-emerald-700" : "text-slate-600"
+                              }`}
+                            >
+                              {product.isActive ? "Aktif" : "Diarsipkan"}
+                            </Text>
+                          </View>
                         </View>
-                        <View className="rounded-full bg-brand-soft/70 px-2.5 py-1">
-                          <Text className="text-[10px] font-poppins-semibold text-brand-muted">
-                            {product.category}
-                          </Text>
+
+                        <View className="flex-row items-start">
+                          {product.image ? (
+                            <View className="mr-4 mt-1 h-16 w-16 overflow-hidden rounded-[16px] bg-brand-soft/30">
+                              <Image
+                                source={{ uri: product.image as string }}
+                                className="h-16 w-16 rounded-[16px]"
+                              />
+                            </View>
+                          ) : null}
+
+                          <View className="flex-1">
+                            <Text className="text-xl font-poppins-bold text-brand-ink">
+                              {product.name}
+                            </Text>
+                            <Text className="font-poppins mt-1 text-sm leading-5 text-brand-muted">
+                              {isCashier
+                                ? "Cek harga dengan cepat. Detail lanjutan tetap dikelola owner."
+                                : "Kelola harga dan stok dalam tampilan yang lebih ringkas."}
+                            </Text>
+                          </View>
                         </View>
                       </View>
 
-                      <Text className="text-xl font-poppins-bold text-brand-ink">
-                        {product.name}
-                      </Text>
-                      <Text className="font-poppins mt-1 text-sm leading-5 text-brand-muted">
-                        Produk aktif untuk {profile?.businessType}. Kelola harga
-                        dan stok dengan cepat.
-                      </Text>
-                    </View>
-
-                    <View className="rounded-[22px] bg-brand px-3 py-3">
-                      <Text className="text-[10px] font-poppins-semibold uppercase tracking-wide text-white/70">
-                        Harga
-                      </Text>
-                      <Text className="mt-1 text-base font-poppins-bold text-white">
-                        {formatIDR(product.price)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View className="mt-4 flex-row flex-wrap">
-                    <View className="mr-2 mb-2 rounded-full bg-brand-soft px-3 py-1.5">
-                      <Text className="text-[11px] font-poppins-semibold text-brand">
-                        {typeof product.stock === "number"
-                          ? `Stok ${product.stock}`
-                          : "Stok fleksibel"}
-                      </Text>
-                    </View>
-                    <View
-                      className={`mb-2 rounded-full px-3 py-1.5 ${
-                        isLowStock ? "bg-red-50" : "bg-emerald-50"
-                      }`}
-                    >
-                      <Text
-                        className={`text-[11px] font-poppins-semibold ${
-                          isLowStock ? "text-red-700" : "text-emerald-700"
+                      <View
+                        className={`mt-4 rounded-[24px] border border-brand/10 bg-brand-soft/30 p-4 ${
+                          isWideLayout ? "mt-0 min-w-[180px]" : ""
                         }`}
                       >
-                        {isLowStock ? "Perlu restock" : "Stok aman"}
-                      </Text>
+                        <Text className="text-[10px] font-poppins-semibold uppercase tracking-wide text-brand-muted">
+                          Harga Jual
+                        </Text>
+                        <Text
+                          className={`mt-2 font-poppins-bold text-brand-ink ${
+                            isWideLayout ? "text-2xl" : "text-[22px]"
+                          }`}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                        >
+                          {formatIDR(product.price)}
+                        </Text>
+                        <Text className="mt-1 text-xs font-poppins text-brand-muted">
+                          per item
+                        </Text>
+                      </View>
                     </View>
-                  </View>
 
-                  <View className="mt-2 flex-row">
-                    <Pressable
-                      className="mr-2 flex-1 rounded-[22px] bg-brand px-4 py-3"
-                      onPress={() =>
-                        navigation.navigate("AddProduct", { product })
-                      }
-                    >
-                      <Text className="text-center text-sm font-poppins-bold text-white">
-                        Edit Produk
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      className="rounded-[22px] border border-red-200 bg-red-50 px-4 py-3"
-                      onPress={() => handleDelete(product.id)}
-                    >
-                      <Text className="text-sm font-poppins-bold text-red-700">
-                        Arsipkan
-                      </Text>
-                    </Pressable>
+                    <View className="mt-4 flex-row flex-wrap">
+                      <View className="mr-2 mb-2 rounded-full bg-brand-soft px-3 py-1.5">
+                        <Text className="text-[11px] font-poppins-semibold text-brand">
+                          {typeof product.stock === "number"
+                            ? `Stok ${product.stock}`
+                            : "Stok fleksibel"}
+                        </Text>
+                      </View>
+                      <View
+                        className={`mb-2 rounded-full px-3 py-1.5 ${
+                          isLowStock ? "bg-red-50" : "bg-emerald-50"
+                        }`}
+                      >
+                        <Text
+                          className={`text-[11px] font-poppins-semibold ${
+                            isLowStock ? "text-red-700" : "text-emerald-700"
+                          }`}
+                        >
+                          {isLowStock ? "Perlu restock" : "Stok aman"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {!isCashier ? (
+                      <View className="mt-4 flex-row">
+                        <Pressable
+                          className="mr-2 flex-1 rounded-[22px] bg-brand px-4 py-3"
+                          onPress={() =>
+                            navigation.navigate("AddProduct", { product })
+                          }
+                        >
+                          <Text className="text-center text-sm font-poppins-bold text-white">
+                            Edit Produk
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          className="rounded-[22px] border border-red-200 bg-red-50 px-4 py-3"
+                          onPress={() => handleDelete(product.id)}
+                        >
+                          <Text className="text-sm font-poppins-bold text-red-700">
+                            Arsipkan
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               );

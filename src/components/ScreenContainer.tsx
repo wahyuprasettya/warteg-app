@@ -10,17 +10,17 @@ interface Props {
 export const ScreenContainer = ({ children, scroll = false }: Props) => {
   if (scroll) {
     return (
-      <SafeAreaView className="flex-1 bg-brand-soft">
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-          <View className="pb-8">{children}</View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#fcfaf8' }}>
+        <ScrollView contentContainerStyle={{ padding: 16, flexGrow: 1 }}>
+          <View style={{ paddingBottom: 32 }}>{children}</View>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-brand-soft">
-      <View className="flex-1 p-4">{children}</View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fcfaf8' }}>
+      <View style={{ flex: 1, padding: 16 }}>{children}</View>
     </SafeAreaView>
   );
 };
