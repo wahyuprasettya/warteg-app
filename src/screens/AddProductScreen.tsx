@@ -9,6 +9,8 @@ import { addProduct, editProduct } from "@/services/firestoreService";
 import { AppStackParamList } from "@/types";
 import { formatNumberInput, parseFormattedNumber } from "@/utils/currency";
 import { resolveStoreUserId } from "@/utils/store";
+import { getResponsiveLayout } from "@/utils/responsive";
+import { useWindowDimensions } from "react-native";
 
 type Props = NativeStackScreenProps<AppStackParamList, "AddProduct">;
 
@@ -17,6 +19,8 @@ export const AddProductScreen = ({ navigation, route }: Props) => {
   const currentProduct = route.params?.product;
   const isCashier = profile?.role === "kasir";
   const storeUserId = resolveStoreUserId(authUser?.uid, profile);
+  const { width } = useWindowDimensions();
+  const layout = getResponsiveLayout(width);
 
   const [name, setName] = useState(currentProduct?.name ?? "");
   const [price, setPrice] = useState(
@@ -98,14 +102,14 @@ export const AddProductScreen = ({ navigation, route }: Props) => {
   };
 
   return (
-    <ScreenContainer scroll>
-      <View className="mb-6 mt-2 overflow-hidden rounded-[36px] border border-brand/15 bg-brand p-6 shadow-sm">
+    <ScreenContainer scroll maxWidth={760}>
+      <View className="mb-6 mt-2 overflow-hidden rounded-[36px] border border-brand/15 bg-brand p-6 shadow-sm" style={{ padding: layout.isTablet ? 28 : 24 }}>
         <View className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
         <View className="absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-white/10" />
 
-        <View className="flex-row items-center justify-between relative z-10">
-          <View className="flex-1 pr-4">
-            <Text className="text-3xl font-poppins-bold text-white">
+        <View style={{ flexDirection: layout.isCompact ? "column" : "row", alignItems: layout.isCompact ? "flex-start" : "center", justifyContent: "space-between" }}>
+          <View style={{ flex: 1, paddingRight: layout.isCompact ? 0 : 16 }}>
+            <Text className="font-poppins-bold text-white" style={{ fontSize: layout.isTablet ? 34 : 28 }}>
               {isCashier
                 ? "Quick Add Produk"
                 : currentProduct
@@ -118,7 +122,7 @@ export const AddProductScreen = ({ navigation, route }: Props) => {
                 : "Lengkapi detail di bawah untuk memperbarui katalog tokomu hingga tampil di layar kasir."}
             </Text>
           </View>
-          <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-white/20">
+          <View className="mt-4 h-16 w-16 items-center justify-center rounded-[22px] bg-white/20" style={{ marginTop: layout.isCompact ? 16 : 0 }}>
             <Text className="font-poppins text-3xl">
               {isCashier ? "⚡" : currentProduct ? "📝" : "✨"}
             </Text>
@@ -172,8 +176,8 @@ export const AddProductScreen = ({ navigation, route }: Props) => {
           {isCashier ? "Harga Jual" : "Penetapan Harga & Stok"}
         </Text>
 
-        <View className="flex-row items-start justify-between">
-          <View className="mr-3 flex-1">
+        <View style={{ flexDirection: layout.isCompact ? "column" : "row" }}>
+          <View style={{ flex: 1, marginRight: layout.isCompact ? 0 : 12, marginBottom: layout.isCompact ? 12 : 0 }}>
             <Text className="mb-2 text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
               Harga Jual
             </Text>
@@ -193,7 +197,7 @@ export const AddProductScreen = ({ navigation, route }: Props) => {
           </View>
 
           {!isCashier ? (
-            <View className="flex-1">
+            <View style={{ flex: 1 }}>
               <Text className="mb-2 text-xs font-poppins-semibold uppercase tracking-wide text-brand-muted">
                 Stok (Opsional)
               </Text>

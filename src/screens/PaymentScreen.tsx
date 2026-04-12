@@ -10,8 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Share,
-  ActivityIndicator
+  ActivityIndicator,
+  useWindowDimensions
 } from "react-native";
+import { CheckCircle2 } from "lucide-react-native";
 
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +22,7 @@ import { updateOrderStatuses, addTransaction, updateTableBookingStatus } from "@
 import { AppStackParamList, PaymentMethod } from "@/types";
 import { formatIDR } from "@/utils/currency";
 import { resolveStoreUserId } from "@/utils/store";
+import { getResponsiveLayout } from "@/utils/responsive";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Payment">;
 
@@ -27,6 +30,8 @@ export const PaymentScreen = ({ navigation, route }: Props) => {
   const { order } = route.params;
   const { clearCart } = useCart();
   const { authUser, profile } = useAuth();
+  const { width } = useWindowDimensions();
+  const layout = getResponsiveLayout(width);
   const storeUserId = resolveStoreUserId(authUser?.uid, profile);
   
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -86,55 +91,79 @@ export const PaymentScreen = ({ navigation, route }: Props) => {
 
   const handleFinish = () => {
     clearCart();
-    navigation.navigate("OrderList");
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Dashboard" }],
+    });
   };
 
   if (receiptText) {
     return (
-      <ScreenContainer scroll>
-        <View style={{ minHeight: '100%', backgroundColor: 'rgba(242, 228, 209, 0.3)', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <View className="w-full bg-white rounded-[48px] p-8 shadow-2xl items-center border border-brand/5">
-          <View className="h-20 w-20 bg-emerald-100 rounded-full items-center justify-center mb-6">
-            <Text className="text-3xl">Lunas</Text>
-          </View>
-          <Text className="text-3xl font-poppins-bold text-emerald-800 mb-2">Berhasil!</Text>
-          <Text className="text-sm font-poppins text-brand-muted text-center mb-8">Transaksi selesai dicatat.</Text>
-          
-          <View className="w-full bg-brand-soft/20 p-6 rounded-[32px] border border-brand/10 border-dashed mb-8">
-            <Text className="font-mono text-[10px] text-brand-ink leading-5 text-center">{receiptText}</Text>
-          </View>
-
-          <View className="w-full">
-            <Pressable 
-              onPress={async () => await Share.share({ message: receiptText })} 
-              className="bg-brand-soft h-16 rounded-3xl items-center justify-center mb-3"
+      <ScreenContainer scroll maxWidth={720} className="bg-brand-soft/20">
+        <View style={{ minHeight: "100%", alignItems: "center", justifyContent: "center", width: "100%" }}>
+          <View className="w-full items-center rounded-[48px] border border-brand/5 bg-white" style={{ padding: layout.isTablet ? 32 : 24 }}>
+            <View className="mb-5 h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
+              <CheckCircle2 size={40} color="#047857" strokeWidth={2.5} />
+            </View>
+            <Text
+              className="mb-1 text-center font-poppins-bold text-emerald-800"
+              style={{ fontSize: layout.isTablet ? 18 : 17, letterSpacing: 2.5 }}
             >
-              <Text className="text-brand font-poppins-bold">Bagikan Nota</Text>
-            </Pressable>
-            <Pressable onPress={handleFinish} className="bg-brand h-16 rounded-3xl items-center justify-center shadow-lg shadow-brand/20">
-              <Text className="text-white font-poppins-bold">Selesai</Text>
-            </Pressable>
+              LUNAS
+            </Text>
+            <Text
+              className="mb-2 text-center font-poppins-bold text-emerald-800"
+              style={{ fontSize: layout.isTablet ? 34 : 30 }}
+            >
+              Berhasil!
+            </Text>
+            <Text className="mb-8 text-center font-poppins text-brand-muted text-sm">
+              Transaksi selesai dicatat.
+            </Text>
+
+            <View
+              className="mb-8 w-full rounded-[32px] border border-dashed border-brand/10 bg-brand-soft/20"
+              style={{ padding: layout.isTablet ? 24 : 18 }}
+            >
+              <Text className="text-center font-mono text-[10px] leading-5 text-brand-ink">
+                {receiptText}
+              </Text>
+            </View>
+
+            <View className="w-full">
+              <Pressable
+                onPress={async () => await Share.share({ message: receiptText })}
+                className="mb-3 h-16 items-center justify-center rounded-3xl bg-brand-soft"
+              >
+                <Text className="font-poppins-bold text-brand">Bagikan Nota</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleFinish}
+                className="h-16 items-center justify-center rounded-3xl bg-brand shadow-lg shadow-brand/20"
+              >
+                <Text className="font-poppins-bold text-white">Selesai</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
         </View>
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer scroll>
-      <View style={{ padding: 32, backgroundColor: '#fff', minHeight: '100%' }}>
+    <ScreenContainer scroll maxWidth={960} className="bg-[#FAF9F6]">
+      <View style={{ width: "100%", minHeight: "100%" }}>
         <Pressable onPress={() => navigation.goBack()} className="h-12 w-12 bg-brand-soft/50 rounded-2xl items-center justify-center mb-6">
           <Text className="text-xl">←</Text>
         </Pressable>
         
-        <Text className="text-4xl font-poppins-bold text-brand-ink mb-2">Tagihan</Text>
+        <Text className="text-4xl font-poppins-bold text-brand-ink mb-2" style={{ fontSize: layout.isTablet ? 44 : layout.isCompact ? 32 : 38 }}>Tagihan</Text>
         <Text className="text-sm font-poppins text-brand-muted mb-10">Selesaikan pembayaran.</Text>
 
-        <View className="bg-brand-ink rounded-[40px] p-8 mb-10 shadow-xl overflow-hidden">
+        <View className="bg-brand-ink rounded-[40px] mb-10 shadow-xl overflow-hidden" style={{ padding: layout.isTablet ? 32 : 24 }}>
            <View className="absolute right-0 top-0 bottom-0 w-32 bg-brand opacity-10 rounded-l-full" />
            <Text className="text-white/60 text-xs font-poppins-bold uppercase tracking-widest mb-2">Total Tagihan</Text>
-           <Text className="text-5xl font-poppins-bold text-white mb-4">{formatIDR(order.total)}</Text>
+           <Text className="font-poppins-bold text-white mb-4" style={{ fontSize: layout.isTablet ? 48 : layout.isCompact ? 34 : 42 }}>{formatIDR(order.total)}</Text>
            <View className="flex-row items-center">
              <View className="h-1.5 w-1.5 rounded-full bg-emerald-400 mr-2" />
              <Text className="text-emerald-400 text-xs font-poppins-bold uppercase tracking-wider">
@@ -144,7 +173,7 @@ export const PaymentScreen = ({ navigation, route }: Props) => {
         </View>
 
         <Text className="text-xs font-poppins-bold text-brand-muted uppercase tracking-[3px] mb-6 px-2">Metode Bayar</Text>
-        <View className="flex-row mb-10">
+        <View className="mb-10" style={{ flexDirection: layout.isCompact ? "column" : "row" }}>
           {(['cash', 'qris', 'transfer'] as const).map(m => {
              const active = paymentMethod === m;
              const labels = { cash: "Tunai", qris: "QRIS", transfer: "Bank" };
@@ -153,7 +182,14 @@ export const PaymentScreen = ({ navigation, route }: Props) => {
                  key={m}
                  onPress={() => setPaymentMethod(m)}
                  style={{
-                   flex: 1, height: 112, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginHorizontal: 4, borderWidth: 1,
+                   flex: layout.isCompact ? undefined : 1,
+                   height: 112,
+                   borderRadius: 24,
+                   alignItems: 'center',
+                   justifyContent: 'center',
+                   marginHorizontal: layout.isCompact ? 0 : 4,
+                   marginBottom: layout.isCompact ? 10 : 0,
+                   borderWidth: 1,
                    backgroundColor: active ? '#c17d3c' : 'rgba(242, 228, 209, 0.2)',
                    borderColor: active ? '#c17d3c' : 'rgba(193, 125, 60, 0.05)',
                    elevation: active ? 8 : 0,
@@ -167,10 +203,11 @@ export const PaymentScreen = ({ navigation, route }: Props) => {
         </View>
 
         {paymentMethod === 'cash' && (
-          <View className="mb-10 bg-brand-soft/10 p-8 rounded-[40px] border border-brand/5">
+          <View className="mb-10 bg-brand-soft/10 rounded-[40px] border border-brand/5" style={{ padding: layout.isTablet ? 32 : 24 }}>
             <Text className="text-sm font-poppins-bold text-brand-ink mb-6">Input Tunai</Text>
             <TextInput
-                 className="bg-white border border-brand/10 rounded-[24px] px-8 py-6 font-poppins-bold text-4xl text-brand text-center mb-6"
+                 className="bg-white border border-brand/10 rounded-[24px] font-poppins-bold text-4xl text-brand text-center mb-6"
+                 style={{ paddingHorizontal: 24, paddingVertical: layout.isTablet ? 22 : 18, fontSize: layout.isTablet ? 40 : 34 }}
                  placeholder="0"
                  keyboardType="number-pad"
                  value={cashAmount}
@@ -183,7 +220,7 @@ export const PaymentScreen = ({ navigation, route }: Props) => {
                      key={val} 
                      onPress={() => setCashAmount(String(val))}
                      className="bg-white border border-brand/10 rounded-2xl px-4 py-4 mb-2"
-                     style={{ width: '31%' }}
+                     style={{ width: layout.isCompact ? '48%' : '31%' }}
                    >
                      <Text className="text-center font-poppins-bold text-brand-ink text-xs">${val/1000}K</Text>
                    </Pressable>

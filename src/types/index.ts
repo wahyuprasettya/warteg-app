@@ -20,10 +20,13 @@ export interface RawMaterialStock {
 export interface UserProfile {
   id: string;
   email: string;
+  name?: string;
   role?: "owner" | "kasir";
   isActive?: boolean;
   ownerId?: string;
   createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string;
   storeName?: string;
   storeAddress?: string;
   storeLogoUrl?: string;
@@ -187,6 +190,7 @@ export type AppStackParamList = {
   Dashboard: undefined;
   Settings: undefined;
   CashierManagement: undefined;
+  OwnerManagement: undefined;
   OrderList: undefined;
   CustomerOrder: { tableId: string; ownerId?: string };
   Payment: { order: OrderRecord };

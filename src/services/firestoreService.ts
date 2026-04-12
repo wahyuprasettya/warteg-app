@@ -176,6 +176,7 @@ export const createUserProfile = async (userId: string, email: string, role: "ow
       userRef,
       deepCompactData({
         email,
+        name: emailName,
         role,
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -243,12 +244,51 @@ export const createCashierProfile = async (
     userRef,
     deepCompactData({
       email,
+      name: email.split("@")[0] || "Kasir",
       role: "kasir",
       isActive: true,
       ownerId: ownerProfile?.id || undefined,
       createdAt: new Date().toISOString(),
       storeName: ownerProfile?.storeName || "Warteg POS",
       storeAddress: ownerProfile?.storeAddress || "",
+      openHour: ownerProfile?.openHour ?? 8,
+      closingHour: ownerProfile?.closingHour ?? CLOSING_HOUR,
+      taxPercent: ownerProfile?.taxPercent ?? 0,
+      serviceChargePercent: ownerProfile?.serviceChargePercent ?? 0,
+      lowStockAlertThreshold: ownerProfile?.lowStockAlertThreshold ?? 5,
+      estimatedProfitMarginPercent: ownerProfile?.estimatedProfitMarginPercent ?? 30,
+      enabledPaymentMethods:
+        ownerProfile?.enabledPaymentMethods ??
+        (["cash", "qris", "transfer"] as PaymentMethod[]),
+      promos: ownerProfile?.promos ?? [],
+      categories: ownerProfile?.categories ?? ["Makanan", "Minuman", "Cemilan", "Paket"],
+      rawMaterials: ownerProfile?.rawMaterials ?? [],
+      outlets: ownerProfile?.outlets ?? [{ id: "utama", name: "Outlet Utama" }],
+    }),
+    { merge: true },
+  );
+};
+
+export const createOwnerProfile = async (
+  userId: string,
+  email: string,
+  ownerProfile?: UserProfile | null,
+  name?: string,
+) => {
+  const userRef = doc(usersCollection(), userId);
+
+  await setDoc(
+    userRef,
+    deepCompactData({
+      email,
+      name: name?.trim() || email.split("@")[0] || "Owner",
+      role: "owner",
+      isActive: true,
+      ownerId: ownerProfile?.id || undefined,
+      createdAt: new Date().toISOString(),
+      storeName: ownerProfile?.storeName || "Warteg POS",
+      storeAddress: ownerProfile?.storeAddress || "",
+      storeLogoUrl: ownerProfile?.storeLogoUrl || "",
       openHour: ownerProfile?.openHour ?? 8,
       closingHour: ownerProfile?.closingHour ?? CLOSING_HOUR,
       taxPercent: ownerProfile?.taxPercent ?? 0,
@@ -309,12 +349,66 @@ export const subscribeCashiersByOwner = (
   );
 };
 
+export const subscribeOwnersByOwner = (
+  ownerId: string,
+  callback: (users: UserProfile[]) => void,
+) => {
+  const ownersQuery = query(
+    usersCollection(),
+    where("ownerId", "==", ownerId),
+  );
+
+  return onSnapshot(
+    ownersQuery,
+    (snapshot) => {
+      const users = snapshot.docs
+        .map((item) => ({
+          id: item.id,
+          ...(item.data() as Omit<UserProfile, "id">),
+        }))
+        .filter((user) => user.role === "owner")
+        .sort((left, right) => {
+          const leftActive = left.isActive === false ? 1 : 0;
+          const rightActive = right.isActive === false ? 1 : 0;
+          if (leftActive !== rightActive) {
+            return leftActive - rightActive;
+          }
+
+          const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
+          const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+          return rightTime - leftTime;
+        });
+
+      callback(users);
+    },
+    (error) => {
+      console.warn("subscribeOwnersByOwner error:", error);
+      import("react-native").then(({ Alert }) => {
+        Alert.alert("Gagal load owner", error.message);
+      });
+      callback([]);
+    },
+  );
+};
+
 export const updateCashierProfile = async (
   cashierId: string,
   payload: Partial<Pick<UserProfile, "isActive" | "ownerId">>,
 ) =>
   updateDoc(
     doc(usersCollection(), cashierId),
+    deepCompactData({
+      ...payload,
+      updatedAt: new Date().toISOString(),
+    }),
+  );
+
+export const updateOwnerProfile = async (
+  ownerUserId: string,
+  payload: Partial<Pick<UserProfile, "name" | "isActive" | "ownerId" | "storeName" | "storeAddress" | "deletedAt">>,
+) =>
+  updateDoc(
+    doc(usersCollection(), ownerUserId),
     deepCompactData({
       ...payload,
       updatedAt: new Date().toISOString(),

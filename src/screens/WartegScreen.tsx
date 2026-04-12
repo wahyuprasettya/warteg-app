@@ -17,6 +17,7 @@ import {
 } from "@/services/firestoreService";
 import { AppStackParamList, Product } from "@/types";
 import { resolveStoreUserId } from "@/utils/store";
+import { getGridColumns } from "@/utils/responsive";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Warteg">;
 
@@ -73,7 +74,7 @@ export const WartegScreen = ({ navigation }: Props) => {
     [items],
   );
 
-  const numColumns = width > 700 ? 3 : 2;
+  const numColumns = getGridColumns(width, { compact: 2, tablet: 3, wide: 4 });
 
   const handleDecrease = (product: Product) => {
     const currentQty = cartQtyByProductId[product.id] ?? 0;

@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View, useWindowDimensions } from "react-native";
 
 import { AppButton } from "@/components/AppButton";
 import { ScreenContainer } from "@/components/ScreenContainer";
@@ -40,6 +40,7 @@ import { formatLongDate, formatTime } from "@/utils/date";
 import { isTableOrder } from "@/utils/order";
 import { generateInsights } from "@/utils/insights";
 import { resolveStoreUserId } from "@/utils/store";
+import { getResponsiveLayout } from "@/utils/responsive";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Dashboard">;
 
@@ -87,6 +88,10 @@ const emptySummary: SalesReportSummary = {
 
 export const DashboardScreen = ({ navigation }: Props) => {
   const { authUser, profile, signOutUser, refreshProfile } = useAuth();
+  const { width } = useWindowDimensions();
+  const layout = getResponsiveLayout(width);
+  const isOwner = profile?.role === "owner";
+  const isPrimaryOwner = profile?.role === "owner" && !profile?.ownerId?.trim();
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [todayTransactions, setTodayTransactions] = useState<
     TransactionRecord[]
@@ -353,6 +358,14 @@ export const DashboardScreen = ({ navigation }: Props) => {
           : "Buat akun kasir baru dan pantau performanya dari sini.",
         onPress: () => navigation.navigate("CashierManagement"),
       },
+      ...(isPrimaryOwner
+        ? [{
+            label: "Manajemen Owner",
+            icon: "👑",
+            hint: "Tambah owner tambahan, ubah nama, dan nonaktifkan akses dari satu layar.",
+            onPress: () => navigation.navigate("OwnerManagement"),
+          }]
+        : []),
       {
         label: "Kontrol Transaksi",
         icon: "🧾",
@@ -399,6 +412,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
       products.length,
       profile?.promos?.length,
       range,
+      isPrimaryOwner,
       topCashier,
       signOutUser,
       transactions,
@@ -705,42 +719,44 @@ export const DashboardScreen = ({ navigation }: Props) => {
         />
       </View>
 
-      <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
-        <View className="mb-3 flex-row items-center">
-          <View className="mr-3 h-11 w-11 items-center justify-center rounded-[18px] bg-brand-soft/60">
-            <Text className="font-poppins text-lg">👑</Text>
+      {isOwner ? (
+        <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
+          <View className="mb-3 flex-row items-center">
+            <View className="mr-3 h-11 w-11 items-center justify-center rounded-[18px] bg-brand-soft/60">
+              <Text className="font-poppins text-lg">👑</Text>
+            </View>
+            <View className="flex-1">
+              <Text className="text-lg font-poppins-bold text-brand-ink">
+                Pusat Fungsi Owner
+              </Text>
+              <Text className="font-poppins text-xs text-brand-muted">
+                Semua area utama owner dipetakan di satu dashboard.
+              </Text>
+            </View>
           </View>
-          <View className="flex-1">
-            <Text className="text-lg font-poppins-bold text-brand-ink">
-              Pusat Fungsi Owner
-            </Text>
-            <Text className="font-poppins text-xs text-brand-muted">
-              Semua area utama owner dipetakan di satu dashboard.
-            </Text>
-          </View>
-        </View>
 
-        <View className="flex-row flex-wrap justify-between">
-          {ownerModules.map((module) => (
-            <Pressable
-              key={module.label}
-              className="mb-4 rounded-[24px] border border-brand/5 bg-brand-soft/15 p-4"
-              style={{ width: "48%" }}
-              onPress={module.onPress}
-            >
-              <View className="mb-3 h-11 w-11 items-center justify-center rounded-full bg-white">
-                <Text className="font-poppins text-xl">{module.icon}</Text>
-              </View>
-              <Text className="text-sm font-poppins-bold text-brand-ink">
-                {module.label}
-              </Text>
-              <Text className="mt-1 font-poppins text-xs leading-5 text-brand-muted">
-                {module.hint}
-              </Text>
-            </Pressable>
-          ))}
+          <View className="flex-row flex-wrap justify-between">
+            {ownerModules.map((module) => (
+              <Pressable
+                key={module.label}
+                className="mb-4 rounded-[24px] border border-brand/5 bg-brand-soft/15 p-4"
+                style={{ width: layout.isCompact ? "100%" : layout.isTablet ? "31%" : "48%" }}
+                onPress={module.onPress}
+              >
+                <View className="mb-3 h-11 w-11 items-center justify-center rounded-full bg-white">
+                  <Text className="font-poppins text-xl">{module.icon}</Text>
+                </View>
+                <Text className="text-sm font-poppins-bold text-brand-ink">
+                  {module.label}
+                </Text>
+                <Text className="mt-1 font-poppins text-xs leading-5 text-brand-muted">
+                  {module.hint}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {/* ── Live Order Status ── */}
       <View className="mb-5 rounded-[28px] border border-brand/5 bg-white p-5">
@@ -1073,7 +1089,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
                 <Pressable
                   key={action.label}
                   className="mb-4 items-center rounded-[24px] border border-brand/5 bg-white p-5 shadow-sm active:opacity-80"
-                  style={{ width: "48%" }}
+                  style={{ width: layout.isCompact ? "100%" : layout.isTablet ? "31%" : "48%" }}
                   onPress={action.onPress}
                 >
                   <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-brand-soft/60">

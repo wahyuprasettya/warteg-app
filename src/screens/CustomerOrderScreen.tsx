@@ -285,7 +285,7 @@ export const CustomerOrderScreen = ({ navigation, route }: Props) => {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer maxWidth={860}>
       {/* Header */}
       <View className="flex-row items-center pb-4">
         {navigation.canGoBack() && (

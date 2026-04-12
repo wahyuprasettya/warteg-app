@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       await createUserProfile(user.uid, user.email ?? "");
       const nextProfile = await refreshProfile(user.uid);
-      if (nextProfile?.role === "kasir" && nextProfile.isActive === false) {
+      if (nextProfile?.isActive === false) {
         await logout();
         setProfile(null);
         setAuthUser(null);

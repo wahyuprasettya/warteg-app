@@ -17,6 +17,7 @@ import { OrderListScreen } from "@/screens/OrderListScreen";
 import { CustomerOrderScreen } from "@/screens/CustomerOrderScreen";
 import { CashierManagementScreen } from "@/screens/CashierManagementScreen";
 import { PaymentScreen } from "@/screens/PaymentScreen";
+import { OwnerManagementScreen } from "@/screens/OwnerManagementScreen";
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -56,6 +57,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="CustomerOrder" component={CustomerOrderScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="CashierManagement" component={CashierManagementScreen} />
+          <Stack.Screen name="OwnerManagement" component={OwnerManagementScreen} />
           <Stack.Screen name="Payment" component={PaymentScreen} />
           <Stack.Screen name="Transactions" component={TransactionHistoryScreen} />
           <Stack.Screen name="Products" component={ProductScreen} />
@@ -64,6 +66,7 @@ export const AppNavigator = () => {
       ) : (
         // Cashier Group
         <Stack.Group>
+          <Stack.Screen name="Dashboard" component={DashboardScreen} />
           <Stack.Screen name="OrderList" component={OrderListScreen} />
           <Stack.Screen name="POS" component={POSScreen} />
           <Stack.Screen name="Cart" component={CartScreen} />

@@ -43,7 +43,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <ScreenContainer scroll>
+    <ScreenContainer scroll maxWidth={560}>
       <View className="mb-10 items-center justify-center pt-10">
         <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-brand/10">
           <Text className="font-poppins text-3xl">📝</Text>

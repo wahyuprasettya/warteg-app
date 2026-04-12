@@ -13,6 +13,8 @@ import { subscribeOrders, subscribeTables } from "@/services/firestoreService";
 import { AppStackParamList, RestaurantTable } from "@/types";
 import { isTableOrder } from "@/utils/order";
 import { resolveStoreUserId } from "@/utils/store";
+import { getGridColumns } from "@/utils/responsive";
+import { useWindowDimensions } from "react-native";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Table">;
 
@@ -20,6 +22,7 @@ export const TableScreen = ({ navigation }: Props) => {
   const { authUser, profile } = useAuth();
   const { setActiveTable, clearCart } = useCart();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
+  const { width } = useWindowDimensions();
   const storeUserId = resolveStoreUserId(authUser?.uid, profile);
 
   useEffect(() => {
@@ -74,6 +77,8 @@ export const TableScreen = ({ navigation }: Props) => {
     navigation.navigate("POS", { tableNumber });
   };
 
+  const numColumns = getGridColumns(width, { compact: 2, tablet: 3, wide: 4 });
+
   return (
     <ScreenContainer>
       <AppHeader
@@ -84,18 +89,18 @@ export const TableScreen = ({ navigation }: Props) => {
       />
 
       {/* Table Statistics Summary */}
-      <View className="mb-4 flex-row justify-between">
-        <View className="flex-1 mr-2 rounded-[24px] bg-white p-4 items-center">
+      <View style={{ marginBottom: 16, flexDirection: width < 420 ? "column" : "row" }}>
+        <View className="rounded-[24px] bg-white p-4 items-center" style={{ flex: width < 420 ? undefined : 1, marginRight: width < 420 ? 0 : 8, marginBottom: width < 420 ? 8 : 0 }}>
           <Text className="text-2xl font-poppins-bold text-brand-ink">{tables.length}</Text>
           <Text className="text-[10px] font-poppins-semibold text-brand-muted uppercase">Total Meja</Text>
         </View>
-        <View className="flex-1 mx-1 rounded-[24px] bg-white p-4 items-center">
+        <View className="rounded-[24px] bg-white p-4 items-center" style={{ flex: width < 420 ? undefined : 1, marginHorizontal: width < 420 ? 0 : 8, marginBottom: width < 420 ? 8 : 0 }}>
           <Text className="text-2xl font-poppins-bold text-emerald-600">
             {tables.filter(t => t.status === 'kosong').length}
           </Text>
           <Text className="text-[10px] font-poppins-semibold text-brand-muted uppercase">Kosong</Text>
         </View>
-        <View className="flex-1 ml-2 rounded-[24px] bg-white p-4 items-center">
+        <View className="rounded-[24px] bg-white p-4 items-center" style={{ flex: width < 420 ? undefined : 1, marginLeft: width < 420 ? 0 : 8 }}>
           <Text className="text-2xl font-poppins-bold text-amber-600">
             {tables.filter(t => t.status === 'terisi').length}
           </Text>
@@ -124,7 +129,7 @@ export const TableScreen = ({ navigation }: Props) => {
       <FlatList
         data={tables}
         keyExtractor={(item) => item.number}
-        numColumns={2}
+        numColumns={numColumns}
         renderItem={({ item }) => (
           <TableCard table={item} onPress={handleSelectTable} />
         )}

@@ -1,16 +1,18 @@
 {
   "expo": {
-    "name": "Warteg POS",
+    "name": "Kedai Tengger",
     "slug": "warteg-pos",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/app-icon/icon.png",
     "experiments": {
       "tsconfigPaths": true
     },
     "splash": {
+      "image": "./assets/splashscreen/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f7f3eb"
+      "backgroundColor": "#f3490e"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,7 +22,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#f7f3eb"
+        "foregroundImage": "./assets/app-icon/adaptive-icon.png",
+        "backgroundColor": "#f3490e"
       }
     },
     "web": {

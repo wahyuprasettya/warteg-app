@@ -20,6 +20,7 @@ import {
 import { AppStackParamList, OrderRecord, Product } from "@/types";
 import { formatIDR } from "@/utils/currency";
 import { resolveStoreUserId } from "@/utils/store";
+import { getGridColumns, getResponsiveLayout } from "@/utils/responsive";
 
 type Props = NativeStackScreenProps<AppStackParamList, "POS">;
 
@@ -27,6 +28,7 @@ export const POSScreen = ({ navigation, route }: Props) => {
   const { authUser, profile } = useAuth();
   const { addToCart, items, total, setActiveTable, updateQty } = useCart();
   const { width } = useWindowDimensions();
+  const layout = getResponsiveLayout(width);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeOrders, setActiveOrders] = useState<OrderRecord[]>([]);
   const [registeredTables, setRegisteredTables] = useState<string[]>([]);
@@ -134,7 +136,7 @@ export const POSScreen = ({ navigation, route }: Props) => {
     }
   };
 
-  const numColumns = width > 700 ? 3 : 2;
+  const numColumns = getGridColumns(width, { compact: 2, tablet: 3, wide: 4 });
 
   return (
     <ScreenContainer>
@@ -150,27 +152,27 @@ export const POSScreen = ({ navigation, route }: Props) => {
             flex: 1, 
             backgroundColor: "rgba(0,0,0,0.85)", 
             justifyContent: "center",
-            paddingHorizontal: 25
+            paddingHorizontal: layout.isTablet ? 40 : 25
           }}
         >
           <View 
-            style={{ 
-              backgroundColor: "#FFFFFF", 
-              borderRadius: 30, 
-              padding: 25,
-              width: '100%',
-              elevation: 20,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 10 },
+          style={{ 
+            backgroundColor: "#FFFFFF", 
+            borderRadius: 30, 
+            padding: layout.isTablet ? 32 : 25,
+            width: '100%',
+            elevation: 20,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 10 },
               shadowOpacity: 0.5,
               shadowRadius: 15,
             }}
           >
             <View style={{ alignItems: "center", marginBottom: 20 }}>
-              <View style={{ height: 60, width: 60, backgroundColor: "#f2e4d1", borderRadius: 22, alignItems: "center", justifyContent: "center", marginBottom: 15 }}>
-                <Armchair size={32} color="#c17d3c" strokeWidth={2.5} />
+              <View style={{ height: layout.isTablet ? 68 : 60, width: layout.isTablet ? 68 : 60, backgroundColor: "#f2e4d1", borderRadius: 22, alignItems: "center", justifyContent: "center", marginBottom: 15 }}>
+                <Armchair size={layout.isTablet ? 34 : 32} color="#c17d3c" strokeWidth={2.5} />
               </View>
-              <Text style={{ fontFamily: "Poppins-Bold", fontSize: 24, color: "#1a1a1a" }}>Pilih Meja</Text>
+              <Text style={{ fontFamily: "Poppins-Bold", fontSize: layout.isTablet ? 28 : 24, color: "#1a1a1a" }}>Pilih Meja</Text>
             </View>
 
             <Text style={{ fontFamily: "Poppins-Bold", fontSize: 11, color: "#c17d3c", letterSpacing: 1.5, textAlign: "center", marginBottom: 10 }}>NOMOR MEJA</Text>
@@ -179,8 +181,8 @@ export const POSScreen = ({ navigation, route }: Props) => {
               style={{
                 backgroundColor: "#FAF7F2",
                 borderRadius: 20,
-                height: 75,
-                fontSize: 38,
+                height: layout.isTablet ? 82 : 75,
+                fontSize: layout.isTablet ? 44 : 38,
                 fontFamily: "Poppins-Bold",
                 textAlign: "center",
                 color: "#c17d3c",
@@ -268,7 +270,7 @@ export const POSScreen = ({ navigation, route }: Props) => {
 
       {/* Header Area */}
       <View className="mb-6 flex-row items-center justify-between">
-        <View className="flex-1">
+        <View className="flex-1 pr-3">
           <Text style={{ fontFamily: "Poppins-Bold", fontSize: 10, color: "#c17d3c", letterSpacing: 3, marginBottom: 8, textTransform: 'uppercase' }}>Kasir Digital</Text>
           <View className="flex-row">
             <View className="bg-brand rounded-2xl px-5 py-2 shadow-sm shadow-brand/20">
@@ -278,33 +280,70 @@ export const POSScreen = ({ navigation, route }: Props) => {
             </View>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          {/* Soft Modern Table Button */}
-          <Pressable 
-            onPress={() => setIsSelectingTable(true)}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: pressed ? "#fafafa" : "#fff",
-              paddingHorizontal: 16,
-              paddingVertical: 10,
-              borderRadius: 100,
-              borderWidth: 1.5,
-              borderColor: "rgba(193,125,60,0.2)",
-              shadowColor: "#c17d3c",
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              elevation: 4,
-            })}
+        <Pressable
+          onPress={() => setIsSelectingTable(true)}
+          style={({ pressed }) => ({
+            overflow: "hidden",
+            borderRadius: 22,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.7)",
+            backgroundColor: "#fff",
+            padding: 8,
+            marginTop: 2,
+            alignSelf: "flex-start",
+            opacity: pressed ? 0.9 : 1,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.08,
+            shadowRadius: 10,
+            elevation: 3,
+          })}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              borderRadius: 18,
+              backgroundColor: "rgba(242, 228, 209, 0.42)",
+              paddingHorizontal: layout.isTablet ? 14 : 12,
+              paddingVertical: layout.isTablet ? 10 : 8,
+            }}
           >
-            <Armchair size={18} color="#c17d3c" strokeWidth={2.5} />
-            <Text style={{ fontFamily: 'Poppins-Bold', fontSize: 11, color: '#c17d3c', marginLeft: 8 }}>MEJA</Text>
-          </Pressable>
-
-        </View>
-        </View>
+            <View
+              style={{
+                marginRight: 10,
+                height: layout.isTablet ? 36 : 32,
+                width: layout.isTablet ? 36 : 32,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 18,
+                backgroundColor: "#fff",
+              }}
+            >
+              <Armchair size={layout.isTablet ? 18 : 16} color="#c17d3c" strokeWidth={2.5} />
+            </View>
+            <View style={{ marginRight: 10 }}>
+              <Text style={{ fontFamily: "Poppins-Bold", fontSize: layout.isTablet ? 13 : 12, color: "#c17d3c" }}>
+                Pilih Meja
+              </Text>
+              <Text style={{ fontFamily: "Poppins", fontSize: layout.isTablet ? 10 : 9, color: "#8b6a4a" }}>
+                Ubah meja aktif
+              </Text>
+            </View>
+            <View
+              style={{
+                height: layout.isTablet ? 30 : 28,
+                width: layout.isTablet ? 30 : 28,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 999,
+                backgroundColor: "#c17d3c",
+              }}
+            >
+              <Text style={{ fontFamily: "Poppins-Bold", fontSize: 12, color: "#fff" }}>{">"}</Text>
+            </View>
+          </View>
+        </Pressable>
       </View>
 
       <View className="mb-6">

@@ -55,6 +55,39 @@ export const createCashierWithEmail = (email: string, password: string) =>
   createUserWithEmailAndPassword(getCashierProvisionAuth(), email.trim(), password)
     .finally(() => signOut(getCashierProvisionAuth()).catch(() => undefined));
 
+const ownerProvisionAppName = "owner-provisioning";
+let ownerProvisionAuth: Auth | null = null;
+
+const getOwnerProvisionAuth = () => {
+  if (!isFirebaseConfigured) {
+    throw new Error("Firebase belum dikonfigurasi.");
+  }
+
+  if (!ownerProvisionAuth) {
+    const app = (() => {
+      try {
+        return getApp(ownerProvisionAppName);
+      } catch {
+        return initializeApp(firebaseConfig, ownerProvisionAppName);
+      }
+    })();
+
+    try {
+      ownerProvisionAuth = initializeAuth(app, {
+        persistence: inMemoryPersistence,
+      });
+    } catch {
+      ownerProvisionAuth = getAuth(app);
+    }
+  }
+
+  return ownerProvisionAuth;
+};
+
+export const createOwnerWithEmail = (email: string, password: string) =>
+  createUserWithEmailAndPassword(getOwnerProvisionAuth(), email.trim(), password)
+    .finally(() => signOut(getOwnerProvisionAuth()).catch(() => undefined));
+
 export const resetPasswordEmail = (email: string) =>
   sendPasswordResetEmail(getFirebaseAuth(), email.trim());
 

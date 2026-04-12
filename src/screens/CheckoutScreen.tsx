@@ -11,6 +11,8 @@ import { addTransaction, addOrder, updateOrder, updateTableBookingStatus, subscr
 import { AppStackParamList, PaymentMethod } from "@/types";
 import { formatIDR } from "@/utils/currency";
 import { resolveStoreUserId } from "@/utils/store";
+import { getResponsiveLayout } from "@/utils/responsive";
+import { useWindowDimensions } from "react-native";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Checkout">;
 
@@ -54,6 +56,8 @@ export const CheckoutScreen = ({ navigation }: Props) => {
     null,
   );
   const [isStoreOpen, setIsStoreOpen] = useState(profile?.isStoreOpen ?? true);
+  const { width } = useWindowDimensions();
+  const layout = getResponsiveLayout(width);
   const storeUserId = resolveStoreUserId(authUser?.uid, profile);
   const enabledPaymentMethods =
     profile?.enabledPaymentMethods?.length
@@ -280,15 +284,15 @@ export const CheckoutScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <ScreenContainer scroll className="bg-[#FAF9F6]">
+    <ScreenContainer scroll className="bg-[#FAF9F6]" maxWidth={960}>
       <AppHeader
         title="Checkout"
         subtitle="Finalisasi pesanan & pilih metode pembayaran."
       />
 
-      <View style={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+      <View style={{ width: "100%", paddingBottom: 40 }}>
         {/* Buyer Info Card */}
-        <View style={{ backgroundColor: '#fff', borderRadius: 32, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 }}>
+        <View style={{ backgroundColor: "#fff", borderRadius: 32, padding: layout.isTablet ? 28 : 22, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
             <View style={{ width: 40, height: 40, backgroundColor: '#f2e4d1', borderRadius: 12, alignItems: 'center', justifyContent: "center", marginRight: 12 }}>
               <Text style={{ fontSize: 20 }}>👤</Text>
@@ -319,9 +323,9 @@ export const CheckoutScreen = ({ navigation }: Props) => {
         </View>
 
         {/* Total Amount Badge */}
-        <View style={{ marginTop: 20, backgroundColor: '#c17d3c', borderRadius: 32, padding: 28, alignItems: 'center', shadowColor: '#c17d3c', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 8 }}>
+        <View style={{ marginTop: 20, backgroundColor: '#c17d3c', borderRadius: 32, padding: layout.isTablet ? 32 : 24, alignItems: 'center', shadowColor: '#c17d3c', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 8 }}>
           <Text style={{ fontFamily: 'Poppins', fontSize: 13, color: 'rgba(255,255,255,0.8)', letterSpacing: 2 }}>TOTAL BAYAR</Text>
-          <Text style={{ fontFamily: 'Poppins-Bold', fontSize: 42, color: '#fff', marginTop: 4 }}>
+          <Text style={{ fontFamily: 'Poppins-Bold', fontSize: layout.isTablet ? 46 : layout.isCompact ? 34 : 40, color: '#fff', marginTop: 4 }}>
             {formatIDR(displayTotal)}
           </Text>
           {displayTable ? (
@@ -334,7 +338,7 @@ export const CheckoutScreen = ({ navigation }: Props) => {
         </View>
 
         {/* Bill Summary Receipt Style */}
-        <View style={{ marginTop: 24, backgroundColor: '#fff', borderRadius: 32, padding: 24, borderStyle: 'dashed', borderWidth: 1, borderColor: '#ddd' }}>
+        <View style={{ marginTop: 24, backgroundColor: '#fff', borderRadius: 32, padding: layout.isTablet ? 28 : 22, borderStyle: 'dashed', borderWidth: 1, borderColor: '#ddd' }}>
           <Text style={{ fontFamily: 'Poppins-Bold', fontSize: 16, color: '#2d2d2d', marginBottom: 20 }}>Ringkasan Tagihan</Text>
           
           <View style={{ gap: 12 }}>

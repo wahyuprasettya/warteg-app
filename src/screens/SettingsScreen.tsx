@@ -38,6 +38,7 @@ const paymentLabels: Record<PaymentMethod, string> = {
 export const SettingsScreen = ({ navigation }: Props) => {
   const { authUser, profile, refreshProfile } = useAuth();
   const isOwner = profile?.role === "owner";
+  const isPrimaryOwner = isOwner && !profile?.ownerId?.trim();
 
   const [storeName, setStoreName] = useState(profile?.storeName ?? "Warteg POS");
   const [storeAddress, setStoreAddress] = useState(profile?.storeAddress ?? "");
@@ -424,6 +425,24 @@ export const SettingsScreen = ({ navigation }: Props) => {
         title="Pengaturan Owner"
         subtitle="Kelola profil toko, operasional, pembayaran, promo, kategori, dan outlet."
       />
+
+      {isPrimaryOwner ? (
+        <View className="mb-4 rounded-[28px] border border-brand/10 bg-white p-5">
+          <Text className="text-lg font-poppins-bold text-brand-ink">
+            Akses Owner
+          </Text>
+          <Text className="mt-1 text-sm font-poppins text-brand-muted">
+            Tambah owner tambahan, ubah nama login, dan nonaktifkan akses dari sini.
+          </Text>
+          <View className="mt-4">
+            <AppButton
+              label="Kelola Owner"
+              onPress={() => navigation.navigate("OwnerManagement")}
+              variant="secondary"
+            />
+          </View>
+        </View>
+      ) : null}
 
       <View className="mb-4 rounded-[28px] bg-white p-5">
         <Text className="text-lg font-poppins-bold text-brand-ink">

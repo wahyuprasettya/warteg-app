@@ -46,7 +46,7 @@ export const LoginScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <ScreenContainer scroll>
+    <ScreenContainer scroll maxWidth={560}>
       <View className="mb-10 items-center justify-center pt-10">
         <View className="h-24 w-24 items-center justify-center rounded-[32px] bg-brand">
           <Text className="font-poppins text-4xl">🥘</Text>
