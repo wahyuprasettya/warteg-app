@@ -27,6 +27,7 @@ import {
   DashboardMetrics,
   PaymentMethod,
   Product,
+  RawMaterialStock,
   SalesReportSummary,
   TransactionRecord,
   UserProfile,
@@ -188,6 +189,7 @@ export const createUserProfile = async (userId: string, email: string, role: "ow
         estimatedProfitMarginPercent: 30,
         enabledPaymentMethods: ["cash", "qris", "transfer"] as PaymentMethod[],
         categories: ["Makanan", "Minuman", "Cemilan", "Paket"],
+        rawMaterials: [],
         outlets: [
           {
             id: "utama",
@@ -258,6 +260,7 @@ export const createCashierProfile = async (
         (["cash", "qris", "transfer"] as PaymentMethod[]),
       promos: ownerProfile?.promos ?? [],
       categories: ownerProfile?.categories ?? ["Makanan", "Minuman", "Cemilan", "Paket"],
+      rawMaterials: ownerProfile?.rawMaterials ?? [],
       outlets: ownerProfile?.outlets ?? [{ id: "utama", name: "Outlet Utama" }],
     }),
     { merge: true },
@@ -346,6 +349,7 @@ export const updateStoreSettings = async (
     outlets?: UserProfile["outlets"];
     promos?: PromoDefinition[];
     categories?: string[];
+    rawMaterials?: RawMaterialStock[];
     webMenuBaseUrl?: string;
   },
 ) => {
@@ -370,6 +374,7 @@ export const updateStoreSettings = async (
       outlets: settings.outlets,
       promos: settings.promos,
       categories: settings.categories,
+      rawMaterials: settings.rawMaterials,
       webMenuBaseUrl: settings.webMenuBaseUrl,
       updatedAt: new Date().toISOString(),
     }),
@@ -402,6 +407,8 @@ export const subscribeProducts = (
         ...i,
         price: i.price || 0,
         name: i.name || "Menu",
+        isActive: i.isActive !== false,
+        uid: i.uid ?? i.userId,
       }));
 
       callback(items);
@@ -438,6 +445,7 @@ export const seedDummyProducts = async (userId: string) => {
     batch.set(productRef, {
       ...deepCompactData(rest),
       userId,
+      uid: userId,
       createdAt: new Date().toISOString(),
     });
   });
@@ -450,6 +458,8 @@ export const addProduct = async (payload: Omit<Product, "id">) =>
     productsCollection(),
     deepCompactData({
       ...payload,
+      uid: payload.uid ?? payload.userId,
+      isActive: payload.isActive !== false,
       createdAt: new Date().toISOString(),
     }),
   );
@@ -466,6 +476,12 @@ export const editProduct = async (productId: string, payload: Partial<Product>) 
 export const archiveProduct = async (productId: string) =>
   updateDoc(doc(productsCollection(), productId), {
     isActive: false,
+    updatedAt: new Date().toISOString(),
+  });
+
+export const restoreProduct = async (productId: string) =>
+  updateDoc(doc(productsCollection(), productId), {
+    isActive: true,
     updatedAt: new Date().toISOString(),
   });
 

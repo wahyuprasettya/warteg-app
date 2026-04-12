@@ -19,14 +19,17 @@ import {
   archiveAndClearOrders,
   subscribeOrders,
   subscribeTables,
+  updateStoreSettings,
   updateStoreOpenStatus,
 } from "@/services/firestoreService";
+import { RawMaterialStockCard } from "@/components/Report/RawMaterialStockCard";
 import { StockReportCard } from "@/components/Report/StockReportCard";
 import {
   AppStackParamList,
   ClosingRecord,
   ClosingReports,
   OrderRecord,
+  RawMaterialStock,
   SalesReportSummary,
   TransactionRecord,
   Product,
@@ -83,7 +86,7 @@ const emptySummary: SalesReportSummary = {
 };
 
 export const DashboardScreen = ({ navigation }: Props) => {
-  const { authUser, profile, signOutUser } = useAuth();
+  const { authUser, profile, signOutUser, refreshProfile } = useAuth();
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [todayTransactions, setTodayTransactions] = useState<
     TransactionRecord[]
@@ -97,6 +100,10 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeOrders, setActiveOrders] = useState<OrderRecord[]>([]);
   const [tables, setTables] = useState<string[]>([]);
+  const [rawMaterials, setRawMaterials] = useState<RawMaterialStock[]>(
+    profile?.rawMaterials ?? [],
+  );
+  const [isSavingRawMaterials, setIsSavingRawMaterials] = useState(false);
   const storeUserId = resolveStoreUserId(authUser?.uid, profile);
 
   const [isStoreOpen, setIsStoreOpen] = useState(profile?.isStoreOpen ?? true);
@@ -106,6 +113,10 @@ export const DashboardScreen = ({ navigation }: Props) => {
       setIsStoreOpen(profile.isStoreOpen);
     }
   }, [profile?.isStoreOpen]);
+
+  useEffect(() => {
+    setRawMaterials(profile?.rawMaterials ?? []);
+  }, [profile?.rawMaterials]);
 
   const handleOpenStore = async () => {
     if (!storeUserId) return;
@@ -199,6 +210,10 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const summary = useMemo(
     () => summarizeTransactions(transactions),
     [transactions],
+  );
+  const activeProductCount = useMemo(
+    () => products.filter((product) => product.isActive !== false).length,
+    [products],
   );
   const todaySummary = useMemo(
     () => summarizeTransactions(todayTransactions),
@@ -327,7 +342,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
       {
         label: "Manajemen Produk",
         icon: "📦",
-        hint: `${products.length} produk aktif siap dikelola dari dashboard owner.`,
+        hint: `${activeProductCount} produk aktif siap dikelola dari dashboard owner.`,
         onPress: () => navigation.navigate("Products"),
       },
       {
@@ -379,6 +394,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
       busiestHourLabel,
       cashierPerformance.length,
       estimatedProfit,
+      activeProductCount,
       navigation,
       products.length,
       profile?.promos?.length,
@@ -502,6 +518,26 @@ export const DashboardScreen = ({ navigation }: Props) => {
       console.error("[Generate Report Error]: ", error);
     } finally {
       setIsGeneratingReport(false);
+    }
+  };
+
+  const handleSaveRawMaterials = async () => {
+    if (!authUser || !storeUserId) {
+      return;
+    }
+
+    try {
+      setIsSavingRawMaterials(true);
+      await updateStoreSettings(storeUserId, {
+        rawMaterials,
+      });
+      await refreshProfile();
+      Alert.alert("Berhasil", "Stok bahan baku berhasil disimpan.");
+    } catch (error) {
+      Alert.alert("Gagal menyimpan", "Stok bahan baku belum berhasil disimpan.");
+      console.error("Save raw materials error:", error);
+    } finally {
+      setIsSavingRawMaterials(false);
     }
   };
 
@@ -883,6 +919,13 @@ export const DashboardScreen = ({ navigation }: Props) => {
           </Pressable>
         </View>
       </View>
+
+      <RawMaterialStockCard
+        materials={rawMaterials}
+        isSaving={isSavingRawMaterials}
+        onChange={setRawMaterials}
+        onSave={handleSaveRawMaterials}
+      />
 
       <StockReportCard products={products} />
 

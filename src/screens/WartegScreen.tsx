@@ -47,16 +47,21 @@ export const WartegScreen = ({ navigation }: Props) => {
     return unsubscribe;
   }, [authUser, storeUserId]);
 
-  const combos = useMemo(
-    () => products.filter((item) => item.category === "Paket"),
+  const activeProducts = useMemo(
+    () => products.filter((item) => item.isActive !== false),
     [products],
+  );
+
+  const combos = useMemo(
+    () => activeProducts.filter((item) => item.category === "Paket"),
+    [activeProducts],
   );
   const visibleProducts = useMemo(
     () =>
-      products.filter(
+      activeProducts.filter(
         (item) => category === "Semua" || item.category === category,
       ),
-    [category, products],
+    [activeProducts, category],
   );
 
   const cartQtyByProductId = useMemo(

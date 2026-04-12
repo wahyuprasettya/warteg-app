@@ -8,6 +8,15 @@ export interface OutletProfile {
   address?: string;
 }
 
+export interface RawMaterialStock {
+  id: string;
+  name: string;
+  unit: string;
+  stock: number;
+  minStock: number;
+  updatedAt?: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -29,12 +38,14 @@ export interface UserProfile {
   promos?: PromoDefinition[];
   categories?: string[];
   outlets?: OutletProfile[];
+  rawMaterials?: RawMaterialStock[];
   webMenuBaseUrl?: string;
 }
 
 export interface Product {
   id: string;
   userId: string;
+  uid?: string;
   name: string;
   price: number;
   category: string;

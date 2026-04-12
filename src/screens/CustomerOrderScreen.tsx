@@ -18,6 +18,7 @@ import { formatIDR } from "@/utils/currency";
 import {
   collection,
   onSnapshot,
+  or,
   query,
   where,
 } from "firebase/firestore";
@@ -60,18 +61,26 @@ export const CustomerOrderScreen = ({ navigation, route }: Props) => {
   useEffect(() => {
     // Filter menu by ownerId so customers see the right restaurant's menu
     const productsQuery = targetOwnerId && targetOwnerId !== 'public'
-      ? query(collection(getDb(), "menu"), where("userId", "==", targetOwnerId))
+      ? query(
+          collection(getDb(), "menu"),
+          or(
+            where("userId", "==", targetOwnerId),
+            where("uid", "==", targetOwnerId),
+          ),
+        )
       : query(collection(getDb(), "menu"));
 
     const unsubscribe = onSnapshot(
       productsQuery,
       (snapshot) => {
-        const items = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Product, "id">),
-          price: d.data().price || 0,
-          name: d.data().name || "Menu",
-        })) as Product[];
+        const items = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<Product, "id">),
+            price: d.data().price || 0,
+            name: d.data().name || "Menu",
+          }))
+          .filter((item) => item.isActive !== false) as Product[];
         setProducts(items);
         setIsLoadingProducts(false);
       },

@@ -72,9 +72,11 @@ export const POSScreen = ({ navigation, route }: Props) => {
     };
   }, [authUser, route.params?.tableNumber, storeUserId, setActiveTable]);
 
-  const categories = ["Semua", ...new Set(products.map((p) => p.category))];
+  const activeProducts = products.filter((product) => product.isActive !== false);
 
-  const filteredProducts = products.filter((p) => {
+  const categories = ["Semua", ...new Set(activeProducts.map((p) => p.category))];
+
+  const filteredProducts = activeProducts.filter((p) => {
     const sameCategory = category === "Semua" || p.category === category;
     const sameKeyword = p.name.toLowerCase().includes(search.toLowerCase());
     return sameCategory && sameKeyword;

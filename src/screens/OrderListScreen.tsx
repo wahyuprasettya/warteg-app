@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useState, useMemo } from "react";
 import { FlatList, Text, View, Pressable, Alert, ActivityIndicator, Switch } from "react-native";
 
+import { EmptyState } from "@/components/EmptyState";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import { SearchBar } from "@/components/SearchBar";
 import { useAuth } from "@/hooks/useAuth";
@@ -78,10 +79,14 @@ export const OrderListScreen = ({ navigation }: Props) => {
   useEffect(() => {
     if (!authUser || !storeUserId) {
       setIsLoading(false);
+      setOrders([]);
       return;
     }
     setIsLoading(true);
-    const unsubscribe = subscribeOrders(storeUserId, setOrders);
+    const unsubscribe = subscribeOrders(storeUserId, (data) => {
+      setOrders(data);
+      setIsLoading(false);
+    });
     return unsubscribe;
   }, [authUser, storeUserId]);
 
@@ -140,6 +145,11 @@ export const OrderListScreen = ({ navigation }: Props) => {
                         (o.tableId?.toLowerCase().includes(query));
     return sourceMatch && statusMatch && searchMatch;
   });
+  const emptyTitle = orders.length === 0 ? "Belum Ada Pesanan" : "Tidak Ada Hasil";
+  const emptyDescription =
+    orders.length === 0
+      ? "Aktivitas dapur akan muncul otomatis ketika ada pesanan baru masuk."
+      : "Tidak ada pesanan yang cocok dengan filter saat ini. Coba ubah status, sumber, atau kata kunci pencarian.";
 
   const renderItem = ({ item }: { item: OrderRecord }) => {
     const status = item.status || "pending";
@@ -248,18 +258,25 @@ export const OrderListScreen = ({ navigation }: Props) => {
       <View className="absolute -right-10 top-1/3 h-40 w-40 rounded-full bg-accent/5" />
 
       {profile?.role === "owner" && (
-        <Pressable 
+        <Pressable
           onPress={() => {
             if (navigation.canGoBack()) {
-  navigation.goBack();
-} else {
-  navigation.navigate("Dashboard");
-}
+              navigation.goBack();
+            } else {
+              navigation.navigate("Dashboard");
+            }
           }}
-          className="mb-4 flex-row items-center self-start bg-white/80 px-4 py-2 rounded-full border border-brand/10 shadow-sm z-10"
+          className="mb-4 overflow-hidden self-start rounded-[22px] border border-white/70 bg-white p-2 shadow-sm z-10"
         >
-          <Text className="text-sm mr-2 text-brand">⬅️</Text>
-          <Text className="font-poppins-bold text-brand">Kembali ke Dashboard Owner</Text>
+          <View className="flex-row items-center rounded-[18px] bg-brand-soft/40 px-3 py-2">
+            <View className="mr-2 h-7 w-7 items-center justify-center rounded-full bg-white">
+              <Text className="text-[11px] font-poppins-bold text-brand">⌂</Text>
+            </View>
+            <Text className="text-sm font-poppins-bold text-brand">Kembali ke Dashboard</Text>
+            <View className="ml-2 h-7 w-7 items-center justify-center rounded-full bg-brand">
+              <Text className="text-[11px] font-poppins-bold text-white">{">"}</Text>
+            </View>
+          </View>
         </Pressable>
       )}
 
@@ -373,24 +390,26 @@ export const OrderListScreen = ({ navigation }: Props) => {
         </View>
       )}
 
-      <FlatList
-        data={filteredOrders}
-        keyExtractor={(item) => item.id || Math.random().toString()}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 150 }}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View className="mt-20 items-center">
-            <View className="h-24 w-24 bg-brand-soft/50 rounded-full items-center justify-center mb-4">
-              <Text className="text-4xl">🥡</Text>
-            </View>
-            <Text className="font-poppins-bold text-brand-ink text-lg">{isLoading ? 'Memuat Data...' : 'Belum Ada Pesanan'}</Text>
-            <Text className="font-poppins text-brand-muted text-sm text-center mt-2 px-10">
-              {isLoading ? 'Sabar ya, data sedang kami ambil.' : 'Pesan baru akan muncul secara otomatis di sini.'}
-            </Text>
-          </View>
-        }
-      />
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center py-24">
+          <ActivityIndicator size="large" color="#A63D40" />
+          <Text className="mt-4 font-poppins text-brand-muted">
+            Memuat aktivitas dapur...
+          </Text>
+        </View>
+      ) : filteredOrders.length === 0 ? (
+        <View className="mt-20">
+          <EmptyState title={emptyTitle} description={emptyDescription} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredOrders}
+          keyExtractor={(item) => item.id || Math.random().toString()}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 150 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       
       <Pressable
         onPress={() => navigation.navigate("POS")}
